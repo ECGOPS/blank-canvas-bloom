@@ -1,202 +1,203 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
+import { OP5Fault, Region, District, FaultType } from "@/lib/types";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, InfoIcon, Users, Clock, ActivityIcon } from "lucide-react";
-import { FaultType } from "@/lib/types";
-import { 
-  calculateOutageDuration, 
-  calculateMTTR, 
-  calculateSAIDI,
-  calculateSAIFI,
-  calculateCAIDI
-} from "@/utils/calculations";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
+import { useNavigate } from "react-router-dom";
 
 interface OP5FormProps {
-  defaultRegionId?: string;
-  defaultDistrictId?: string;
+  className?: string;
 }
 
-export function OP5Form({ defaultRegionId = "", defaultDistrictId = "" }: OP5FormProps) {
+export function OP5Form({ className }: OP5FormProps) {
   const { regions, districts, addOP5Fault } = useData();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [regionId, setRegionId] = useState<string>(defaultRegionId);
-  const [districtId, setDistrictId] = useState<string>(defaultDistrictId);
-  const [occurrenceDate, setOccurrenceDate] = useState<string>("");
-  const [faultType, setFaultType] = useState<FaultType>("Unplanned");
-  const [faultLocation, setFaultLocation] = useState<string>("");
-  const [restorationDate, setRestorationDate] = useState<string>("");
-  const [ruralAffected, setRuralAffected] = useState<number>(0);
-  const [urbanAffected, setUrbanAffected] = useState<number>(0);
-  const [metroAffected, setMetroAffected] = useState<number>(0);
-  
-  // Derived values
-  const [outageDuration, setOutageDuration] = useState<number | null>(null);
-  const [mttr, setMttr] = useState<number | null>(null);
-  const [saidi, setSaidi] = useState<number | null>(null);
-  const [saifi, setSaifi] = useState<number | null>(null);
-  const [caidi, setCaidi] = useState<number | null>(null);
-  
-  // Update region and district when props change
-  useEffect(() => {
-    if (defaultRegionId) {
-      setRegionId(defaultRegionId);
-    }
-    
-    if (defaultDistrictId) {
-      setDistrictId(defaultDistrictId);
-    }
-  }, [defaultRegionId, defaultDistrictId]);
-  
-  // Filter regions and districts based on user role
-  const filteredRegions = user?.role === "global_engineer" 
-    ? regions 
-    : regions.filter(r => user?.region ? r.name === user.region : true);
+  const [formData, setFormData] = useState<Partial<OP5Fault>>({
+    occurrenceDate: new Date().toISOString().split("T")[0],
+    restorationDate: new Date().toISOString().split("T")[0],
+    affectedPopulation: { rural: 0, urban: 0, metro: 0 },
+    reliabilityIndices: { saidi: 0, saifi: 0, caidi: 0 },
+  });
+  const [regionId, setRegionId] = useState("");
+  const [districtId, setDistrictId] = useState("");
 
-  // Filter districts based on region and user role  
+  // Initialize region and district based on user role
+  useEffect(() => {
+    if (user) {
+      if (
+        user.role === "district_engineer" ||
+        user.role === "regional_engineer"
+      ) {
+        const userRegion = regions.find((r) => r.name === user.region);
+        if (userRegion) {
+          setRegionId(userRegion.id);
+          setFormData((prev) => ({ ...prev, regionId: userRegion.id }));
+
+          if (user.role === "district_engineer" && user.district) {
+            const userDistrict = districts.find((d) => d.name === user.district);
+            if (userDistrict) {
+              setDistrictId(userDistrict.id);
+              setFormData((prev) => ({ ...prev, districtId: userDistrict.id }));
+            }
+          }
+        }
+      }
+    }
+  }, [user, regions, districts]);
+
+  // Filter regions and districts based on user role
+  const filteredRegions =
+    user?.role === "global_engineer"
+      ? regions
+      : regions.filter((r) => (user?.region ? r.name === user.region : true));
+
   const filteredDistricts = regionId
-    ? districts.filter(d => {
-        const region = regions.find(r => r.id === regionId);
-        return region?.districts.some(rd => rd.id === d.id) && (
-          user?.role === "district_engineer" 
-            ? user.district === d.name 
-            : true
+    ? districts.filter((d) => {
+        const region = regions.find((r) => r.id === regionId);
+        return (
+          region?.districts.some((rd) => rd.id === d.id) &&
+          (user?.role === "district_engineer"
+            ? user.district === d.name
+            : true)
         );
       })
     : [];
 
-  // Calculate metrics when dates change
-  useEffect(() => {
-    if (occurrenceDate && restorationDate) {
-      // Ensure restoration date is after occurrence date
-      if (new Date(restorationDate) <= new Date(occurrenceDate)) {
-        toast.error("Restoration date must be after occurrence date");
-        return;
-      }
-      
-      const duration = calculateOutageDuration(occurrenceDate, restorationDate);
-      setOutageDuration(duration);
-      
-      // Mock calculation for demo
-      setMttr(duration * 0.95);
-      
-      const totalAffected = ruralAffected + urbanAffected + metroAffected;
-      const district = districts.find(d => d.id === districtId);
-      if (district) {
-        const totalPopulation = district.population.rural + district.population.urban + district.population.metro;
-        
-        // For demo we'll use simplified calculation
-        const calculatedSaidi = calculateSAIDI(
-          [{ occurrenceDate, restorationDate, affectedCustomers: totalAffected }],
-          totalPopulation
-        );
-        setSaidi(calculatedSaidi);
-        
-        const calculatedSaifi = calculateSAIFI(
-          [{ affectedCustomers: totalAffected }],
-          totalPopulation
-        );
-        setSaifi(calculatedSaifi);
-        
-        setCaidi(calculateCAIDI(calculatedSaidi, calculatedSaifi));
-      }
-    }
-  }, [occurrenceDate, restorationDate, ruralAffected, urbanAffected, metroAffected, districtId, districts]);
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle region change
+  const handleRegionChange = (value: string) => {
+    setRegionId(value);
+    setFormData((prev) => ({ ...prev, regionId: value }));
+    setDistrictId("");
+    setFormData((prev) => ({ ...prev, districtId: "" }));
+  };
+
+  // Handle district change
+  const handleDistrictChange = (value: string) => {
+    setDistrictId(value);
+    setFormData((prev) => ({ ...prev, districtId: value }));
+  };
+
+  const handleInputChange = (
+    field: keyof OP5Fault,
+    value: string | number | undefined
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handlePopulationChange = (
+    field: keyof typeof formData.affectedPopulation,
+    value: number
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      affectedPopulation: {
+        ...prev.affectedPopulation,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleReliabilityIndicesChange = (
+    field: keyof typeof formData.reliabilityIndices,
+    value: number
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      reliabilityIndices: {
+        ...prev.reliabilityIndices,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!occurrenceDate || !faultType || !faultLocation || !regionId || !districtId) {
+
+    if (
+      !formData.regionId ||
+      !formData.districtId ||
+      !formData.occurrenceDate ||
+      !formData.faultType ||
+      !formData.faultLocation
+    ) {
       toast.error("Please fill all required fields");
       return;
     }
-    
-    // Validate that restoration date is after occurrence date
-    if (restorationDate && new Date(restorationDate) <= new Date(occurrenceDate)) {
-      toast.error("Restoration date must be after occurrence date");
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      addOP5Fault({
-        regionId,
-        districtId,
-        occurrenceDate,
-        faultType,
-        faultLocation,
-        restorationDate: restorationDate || new Date().toISOString(), // Use current time if not set
-        affectedPopulation: {
-          rural: ruralAffected,
-          urban: urbanAffected,
-          metro: metroAffected
-        },
-        outrageDuration: outageDuration || 0,
-        mttr: mttr || 0,
-        reliabilityIndices: {
-          saidi: saidi || 0,
-          saifi: saifi || 0,
-          caidi: caidi || 0
-        }
-      });
-      
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Error submitting OP5 fault:", error);
-      toast.error("Failed to submit fault report");
-    } finally {
-      setIsSubmitting(false);
-    }
+
+    const faultData: Omit<OP5Fault, "id" | "status"> = {
+      regionId: formData.regionId,
+      districtId: formData.districtId,
+      occurrenceDate: formData.occurrenceDate,
+      faultType: formData.faultType as FaultType,
+      faultLocation: formData.faultLocation,
+      restorationDate: formData.restorationDate,
+      affectedPopulation: {
+        rural: formData.affectedPopulation?.rural || 0,
+        urban: formData.affectedPopulation?.urban || 0,
+        metro: formData.affectedPopulation?.metro || 0,
+      },
+      outrageDuration: Number(formData.outrageDuration) || 0,
+      mttr: Number(formData.mttr) || 0,
+      reliabilityIndices: {
+        saidi: Number(formData.reliabilityIndices?.saidi) || 0,
+        saifi: Number(formData.reliabilityIndices?.saifi) || 0,
+        caidi: Number(formData.reliabilityIndices?.caidi) || 0,
+      },
+      createdBy: user?.name || "Anonymous",
+      createdAt: new Date().toISOString(),
+    };
+
+    addOP5Fault(faultData);
+    navigate("/faults");
   };
-  
+
   return (
-    <Card className="border-0 shadow-none bg-transparent">
-      <CardHeader className="px-0 pt-0">
-        <CardTitle className="text-2xl font-serif">OP5 Fault Report</CardTitle>
-        <CardDescription>
-          Report a fault in the OP5 system with detailed information
-        </CardDescription>
+    <Card className={cn("w-full", className)}>
+      <CardHeader>
+        <CardTitle>Report OP5 Fault</CardTitle>
+        <CardDescription>Submit a new OP5 fault report</CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <Label htmlFor="region" className="text-base font-medium">Region</Label>
-              <Select 
-                value={regionId} 
-                onValueChange={setRegionId}
-                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer"}
-                required
+      <CardContent className="grid gap-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="region">Region</Label>
+              <Select
+                value={regionId}
+                onValueChange={handleRegionChange}
+                disabled={
+                  user?.role === "district_engineer" ||
+                  user?.role === "regional_engineer"
+                }
               >
-                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
+                <SelectTrigger>
                   <SelectValue placeholder="Select region" />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredRegions.map(region => (
+                  {filteredRegions.map((region) => (
                     <SelectItem key={region.id} value={region.id}>
                       {region.name}
                     </SelectItem>
@@ -204,215 +205,187 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "" }: OP5For
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="district" className="text-base font-medium">District</Label>
-              <Select 
-                value={districtId} 
-                onValueChange={setDistrictId}
-                disabled={user?.role === "district_engineer" || !regionId}
-                required
+
+            <div>
+              <Label htmlFor="district">District</Label>
+              <Select
+                value={districtId}
+                onValueChange={handleDistrictChange}
+                disabled={
+                  user?.role === "district_engineer" || !regionId
+                }
               >
-                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
+                <SelectTrigger>
                   <SelectValue placeholder="Select district" />
                 </SelectTrigger>
                 <SelectContent>
-                  {regionId && districts
-                    .filter(d => d.regionId === regionId)
-                    .map(district => (
-                      <SelectItem key={district.id} value={district.id}>
-                        {district.name}
-                      </SelectItem>
-                    ))
-                  }
+                  {filteredDistricts.map((district) => (
+                    <SelectItem key={district.id} value={district.id}>
+                      {district.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <Label htmlFor="occurrenceDate" className="text-base font-medium">Fault Occurrence Date & Time</Label>
+
+            <div>
+              <Label htmlFor="occurrenceDate">Occurrence Date</Label>
               <Input
+                type="date"
                 id="occurrenceDate"
-                type="datetime-local"
-                value={occurrenceDate}
-                onChange={(e) => setOccurrenceDate(e.target.value)}
+                value={formData.occurrenceDate || ""}
+                onChange={(e) =>
+                  handleInputChange("occurrenceDate", e.target.value)
+                }
                 required
-                className="h-12 text-base bg-background/50 border-muted"
               />
             </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="faultType" className="text-base font-medium">Type of Fault</Label>
-              <Select value={faultType} onValueChange={(value) => setFaultType(value as FaultType)} required>
-                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
-                  <SelectValue placeholder="Select fault type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Planned">Planned</SelectItem>
-                  <SelectItem value="Unplanned">Unplanned</SelectItem>
-                  <SelectItem value="Emergency">Emergency</SelectItem>
-                  <SelectItem value="Load Shedding">Load Shedding</SelectItem>
-                </SelectContent>
-              </Select>
+
+            <div>
+              <Label htmlFor="restorationDate">Restoration Date</Label>
+              <Input
+                type="date"
+                id="restorationDate"
+                value={formData.restorationDate || ""}
+                onChange={(e) =>
+                  handleInputChange("restorationDate", e.target.value)
+                }
+              />
             </div>
           </div>
-          
-          <div className="space-y-3">
-            <Label htmlFor="faultLocation" className="text-base font-medium">Fault Location</Label>
+
+          <div>
+            <Label htmlFor="faultType">Fault Type</Label>
+            <Select
+              value={formData.faultType || ""}
+              onValueChange={(value) => handleInputChange("faultType", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select fault type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Planned">Planned</SelectItem>
+                <SelectItem value="Unplanned">Unplanned</SelectItem>
+                <SelectItem value="Emergency">Emergency</SelectItem>
+                <SelectItem value="Load Shedding">Load Shedding</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="faultLocation">Fault Location</Label>
             <Input
-              id="faultLocation"
               type="text"
-              placeholder="E.g., Transformer T5 on Main Street"
-              value={faultLocation}
-              onChange={(e) => setFaultLocation(e.target.value)}
+              id="faultLocation"
+              value={formData.faultLocation || ""}
+              onChange={(e) =>
+                handleInputChange("faultLocation", e.target.value)
+              }
               required
-              className="h-12 text-base bg-background/50 border-muted"
             />
           </div>
-          
-          <div className="space-y-3">
-            <Label htmlFor="restorationDate" className="text-base font-medium">Fault Restoration Date & Time</Label>
-            <Input
-              id="restorationDate"
-              type="datetime-local"
-              value={restorationDate}
-              onChange={(e) => setRestorationDate(e.target.value)}
-              className="h-12 text-base bg-background/50 border-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              Leave empty if the fault is still active
-            </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="rural">Rural Population Affected</Label>
+              <Input
+                type="number"
+                id="rural"
+                value={formData.affectedPopulation?.rural || 0}
+                onChange={(e) =>
+                  handlePopulationChange("rural", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="urban">Urban Population Affected</Label>
+              <Input
+                type="number"
+                id="urban"
+                value={formData.affectedPopulation?.urban || 0}
+                onChange={(e) =>
+                  handlePopulationChange("urban", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="metro">Metro Population Affected</Label>
+              <Input
+                type="number"
+                id="metro"
+                value={formData.affectedPopulation?.metro || 0}
+                onChange={(e) =>
+                  handlePopulationChange("metro", Number(e.target.value))
+                }
+              />
+            </div>
           </div>
-          
-          <Tabs defaultValue="affected" className="w-full">
-            <TabsList className="w-full grid grid-cols-2 bg-muted/50 p-1">
-              <TabsTrigger value="affected" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Users className="h-4 w-4 mr-2" />
-                Affected Population
-              </TabsTrigger>
-              <TabsTrigger value="calculations" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <ActivityIcon className="h-4 w-4 mr-2" />
-                Calculations
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="affected" className="space-y-6 pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-3">
-                  <Label htmlFor="ruralAffected" className="font-medium flex items-center">
-                    Rural Population Affected
-                    <InfoIcon className="h-4 w-4 ml-1 text-muted-foreground" />
-                  </Label>
-                  <Input
-                    id="ruralAffected"
-                    type="number"
-                    min="0"
-                    value={ruralAffected}
-                    onChange={(e) => setRuralAffected(parseInt(e.target.value) || 0)}
-                    className="bg-background/50 border-muted"
-                  />
-                </div>
-                
-                <div className="space-y-3">
-                  <Label htmlFor="urbanAffected" className="font-medium flex items-center">
-                    Urban Population Affected
-                    <InfoIcon className="h-4 w-4 ml-1 text-muted-foreground" />
-                  </Label>
-                  <Input
-                    id="urbanAffected"
-                    type="number"
-                    min="0"
-                    value={urbanAffected}
-                    onChange={(e) => setUrbanAffected(parseInt(e.target.value) || 0)}
-                    className="bg-background/50 border-muted"
-                  />
-                </div>
-                
-                <div className="space-y-3">
-                  <Label htmlFor="metroAffected" className="font-medium flex items-center">
-                    Metro Population Affected
-                    <InfoIcon className="h-4 w-4 ml-1 text-muted-foreground" />
-                  </Label>
-                  <Input
-                    id="metroAffected"
-                    type="number"
-                    min="0"
-                    value={metroAffected}
-                    onChange={(e) => setMetroAffected(parseInt(e.target.value) || 0)}
-                    className="bg-background/50 border-muted"
-                  />
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="calculations" className="pt-6">
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-3">
-                    <Label htmlFor="outageDuration" className="font-medium flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      Outage Duration
-                    </Label>
-                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
-                      {outageDuration !== null 
-                        ? `${Math.floor(outageDuration / 60)} hours ${outageDuration % 60} minutes` 
-                        : "Not calculated yet"}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Label htmlFor="mttr" className="font-medium flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      MTTR (Mean Time To Repair)
-                    </Label>
-                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
-                      {mttr !== null 
-                        ? `${Math.floor(mttr / 60)} hours ${Math.round(mttr % 60)} minutes` 
-                        : "Not calculated yet"}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <Label className="font-medium flex items-center">
-                    <ActivityIcon className="h-4 w-4 mr-1" />
-                    Reliability Indices
-                  </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
-                      <div className="font-medium">SAIDI</div>
-                      <div>{saidi !== null ? saidi.toFixed(2) : "Not calculated yet"}</div>
-                    </div>
-                    
-                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
-                      <div className="font-medium">SAIFI</div>
-                      <div>{saifi !== null ? saifi.toFixed(2) : "Not calculated yet"}</div>
-                    </div>
-                    
-                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
-                      <div className="font-medium">CAIDI</div>
-                      <div>{caidi !== null ? caidi.toFixed(2) : "Not calculated yet"}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="outrageDuration">Outrage Duration (minutes)</Label>
+              <Input
+                type="number"
+                id="outrageDuration"
+                value={formData.outrageDuration || 0}
+                onChange={(e) =>
+                  handleInputChange("outrageDuration", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="mttr">MTTR (minutes)</Label>
+              <Input
+                type="number"
+                id="mttr"
+                value={formData.mttr || 0}
+                onChange={(e) => handleInputChange("mttr", Number(e.target.value))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="saidi">SAIDI</Label>
+              <Input
+                type="number"
+                id="saidi"
+                value={formData.reliabilityIndices?.saidi || 0}
+                onChange={(e) =>
+                  handleReliabilityIndicesChange("saidi", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="saifi">SAIFI</Label>
+              <Input
+                type="number"
+                id="saifi"
+                value={formData.reliabilityIndices?.saifi || 0}
+                onChange={(e) =>
+                  handleReliabilityIndicesChange("saifi", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="caidi">CAIDI</Label>
+              <Input
+                type="number"
+                id="caidi"
+                value={formData.reliabilityIndices?.caidi || 0}
+                onChange={(e) =>
+                  handleReliabilityIndicesChange("caidi", Number(e.target.value))
+                }
+              />
+            </div>
+          </div>
+
+          <Button type="submit">Submit</Button>
         </form>
       </CardContent>
-      <CardFooter className="px-0 pt-4">
-        <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full h-12 text-base font-medium">
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Submitting...
-            </>
-          ) : (
-            "Submit Fault Report"
-          )}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }

@@ -90,6 +90,8 @@ export interface VITInspectionData {
 
 export type SubstationInspection = {
   id: string;
+  regionId?: string;
+  districtId?: string;
   region: string;
   district: string;
   date: string;

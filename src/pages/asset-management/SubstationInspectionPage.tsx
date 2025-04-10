@@ -190,8 +190,11 @@ export default function SubstationInspectionPage() {
     const regionId = regionFound?.id || "";
     const districtId = districtFound?.id || "";
     
-    const inspectionItems: InspectionItem[] = categories.flatMap(category =>
-      category.items
+    // Convert the categories data structure to the expected InspectionCategory format
+    const inspectionCategories = categories.map(category => ({
+      id: category.id,
+      category: category.name.toLowerCase(),
+      items: category.items
         .filter(item => item.status) // Only include items that have a status selected
         .map(item => ({
           id: item.id,
@@ -200,26 +203,26 @@ export default function SubstationInspectionPage() {
           status: item.status,
           remarks: item.remarks || "",
         }))
-    );
-    
-    const inspectionData: Omit<SubstationInspection, "id"> = {
-      regionId,
-      districtId,
-      region: region,
-      district: district,
-      date: formData.date || new Date().toISOString().split('T')[0],
-      substationNo: formData.substationNo || "",
-      substationName: formData.substationName || "",
-      type: formData.type || "indoor",
-      items: inspectionItems,
-      createdBy: user?.name || "Unknown",
-      createdAt: new Date().toISOString(),
-    };
-    
-    const id = saveInspection(inspectionData);
-    toast.success("Inspection saved successfully");
-    navigate("/asset-management/inspection-management");
+  }));
+  
+  const inspectionData: Omit<SubstationInspection, "id"> = {
+    regionId,
+    districtId,
+    region: region,
+    district: district,
+    date: formData.date || new Date().toISOString().split('T')[0],
+    substationNo: formData.substationNo || "",
+    substationName: formData.substationName || "",
+    type: formData.type || "indoor",
+    items: inspectionCategories,
+    createdBy: user?.name || "Unknown",
+    createdAt: new Date().toISOString(),
   };
+  
+  const id = saveInspection && saveInspection(inspectionData);
+  toast.success("Inspection saved successfully");
+  navigate("/asset-management/inspection-management");
+};
 
   return (
     <Layout>

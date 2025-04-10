@@ -1,3 +1,4 @@
+
 import { type ClassValue } from "clsx";
 
 export type UserRole = "district_engineer" | "regional_engineer" | "global_engineer" | null;
@@ -150,19 +151,28 @@ export interface InspectionItem {
   name: string;
   status: ConditionStatus;
   remarks?: string;
+  description?: string;
 }
 
 export interface InspectionCategory {
+  id: string;
   category: string;
   items: InspectionItem[];
+  description?: string;
+  remarks?: string;
+  status?: ConditionStatus;
+  name?: string;
 }
 
 export interface SubstationInspection {
   id: string;
+  regionId?: string;
+  districtId?: string;
   region: string;
   district: string;
   date: string;
   substationNo: string;
+  substationName?: string;
   type: 'indoor' | 'outdoor';
   items: InspectionCategory[];
   createdAt?: string;

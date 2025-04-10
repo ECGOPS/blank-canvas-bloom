@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { SubstationInspection, ConditionStatus, InspectionItem } from "@/lib/types";
+import { SubstationInspection, ConditionStatus, InspectionItem, InspectionCategory } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { ChevronLeft } from "lucide-react";
@@ -57,13 +57,27 @@ export default function EditInspectionPage() {
     }));
   };
 
-  // Update inspection item
-  const updateInspectionItem = (id: string, field: keyof InspectionItem, value: any) => {
+  // In the updateInspectionItem function, use this:
+  const updateInspectionItem = (itemId: string, field: keyof InspectionItem, value: any) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items?.map(item => 
-        item.id === id ? { ...item, [field]: value } : item
-      ) || []
+      items: prev.items?.map(category => {
+        if (!category.items) return category;
+        
+        // Check if this category contains the item
+        const hasItem = category.items.some(item => item.id === itemId);
+        
+        if (hasItem) {
+          return {
+            ...category,
+            items: category.items.map(item => 
+              item.id === itemId ? { ...item, [field]: value } : item
+            )
+          };
+        }
+        
+        return category;
+      }) || []
     }));
   };
 
@@ -78,7 +92,7 @@ export default function EditInspectionPage() {
     return formData.items?.filter(item => item.category === categoryMap[category]) || [];
   };
 
-  // Handle form submission
+  // Inside handleSubmit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -88,9 +102,12 @@ export default function EditInspectionPage() {
     }
     
     if (id) {
-      // Update the region and district IDs based on their names
-      const regionId = regions.find(r => r.name === formData.region)?.id || formData.regionId;
-      const districtId = districts.find(d => d.name === formData.district)?.id || formData.districtId;
+      // Find the region and district IDs based on their names
+      const regionFound = regions.find(r => r.name === formData.region);
+      const districtFound = districts.find(d => d.name === formData.district);
+      
+      const regionId = regionFound?.id;
+      const districtId = districtFound?.id;
       
       const updatedData: Partial<SubstationInspection> = {
         ...formData,
@@ -99,7 +116,7 @@ export default function EditInspectionPage() {
       };
       
       // Update the inspection data
-      updateInspection(id, updatedData);
+      updateInspection && updateInspection(id, updatedData);
       
       // Navigate to the details page
       navigate(`/asset-management/inspection-details/${id}`);

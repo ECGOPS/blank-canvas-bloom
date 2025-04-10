@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -11,53 +13,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { VITAsset, VITStatus, VoltageLevel } from "@/lib/types";
-import { Loader2, MapPin } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/components/ui/sonner";
+import { VITAsset, VoltageLevel, VITStatus } from "@/lib/types";
 
-interface VITAssetFormProps {
-  asset?: VITAsset;
-  onSubmit: () => void;
-  onCancel: () => void;
-}
-
-export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
-  const { regions, districts, addVITAsset, updateVITAsset } = useData();
+export default function VITAssetForm() {
   const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  
-  // Form fields
-  const [regionId, setRegionId] = useState(asset?.regionId || "");
-  const [districtId, setDistrictId] = useState(asset?.districtId || "");
-  const [voltageLevel, setVoltageLevel] = useState<VoltageLevel>(asset?.voltageLevel || "11KV");
-  const [typeOfUnit, setTypeOfUnit] = useState(asset?.typeOfUnit || "");
-  const [serialNumber, setSerialNumber] = useState(asset?.serialNumber || "");
-  const [location, setLocation] = useState(asset?.location || "");
-  const [gpsCoordinates, setGpsCoordinates] = useState(asset?.gpsCoordinates || "");
-  const [status, setStatus] = useState<VITStatus>(asset?.status || "Operational");
-  const [protection, setProtection] = useState(asset?.protection || "");
-  const [photoUrl, setPhotoUrl] = useState(asset?.photoUrl || "");
+  const { regions, districts, addVITAsset } = useData();
+  const navigate = useNavigate();
+  const [regionId, setRegionId] = useState("");
+  const [districtId, setDistrictId] = useState("");
+  const [formData, setFormData] = useState<Partial<VITAsset>>({
+    voltageLevel: "11KV",
+    status: "Operational",
+  });
 
   // Initialize region and district based on user role
   useEffect(() => {
-    if (!asset && user) {
+    if (user) {
       if (user.role === "district_engineer" || user.role === "regional_engineer") {
         const userRegion = regions.find(r => r.name === user.region);
         if (userRegion) {
           setRegionId(userRegion.id);
+          setFormData(prev => ({ ...prev, regionId: userRegion.id }));
           
           if (user.role === "district_engineer" && user.district) {
             const userDistrict = districts.find(d => d.name === user.district);
             if (userDistrict) {
               setDistrictId(userDistrict.id);
+              setFormData(prev => ({ ...prev, districtId: userDistrict.id }));
             }
           }
         }
       }
     }
-  }, [asset, user, regions, districts]);
+  }, [user, regions, districts]);
 
   // Filter regions and districts based on user role
   const filteredRegions = user?.role === "global_engineer"
@@ -74,255 +64,223 @@ export function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
         );
       })
     : [];
-  
-  const handleGetLocation = () => {
-    setIsGettingLocation(true);
-    
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setGpsCoordinates(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-          setIsGettingLocation(false);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setIsGettingLocation(false);
-          alert("Could not get your location. Please enter GPS coordinates manually.");
-        }
-      );
-    } else {
-      setIsGettingLocation(false);
-      alert("Geolocation is not supported by this browser.");
-    }
+
+  // Handle region change
+  const handleRegionChange = (value: string) => {
+    setRegionId(value);
+    setFormData(prev => ({ ...prev, regionId: value }));
+    setDistrictId("");
+    setFormData(prev => ({ ...prev, districtId: "" }));
   };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  // Handle district change
+  const handleDistrictChange = (value: string) => {
+    setDistrictId(value);
+    setFormData(prev => ({ ...prev, districtId: value }));
+  };
+
+  // Handle generic form input changes
+  const handleInputChange = (field: keyof VITAsset, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!regionId || !districtId || !serialNumber || !typeOfUnit || !location || !voltageLevel) {
-      alert("Please fill all required fields");
+
+    if (!formData.regionId || !formData.districtId || !formData.voltageLevel || !formData.typeOfUnit || !formData.serialNumber || !formData.location || !formData.gpsCoordinates || !formData.status || !formData.protection) {
+      toast.error("Please fill in all required fields.");
       return;
     }
-    
-    setIsSubmitting(true);
-    
-    try {
-      const assetData = {
-        regionId,
-        districtId,
-        voltageLevel,
-        typeOfUnit,
-        serialNumber,
-        location,
-        gpsCoordinates,
-        status,
-        protection,
-        photoUrl
-      };
-      
-      if (asset) {
-        // Update existing asset
-        updateVITAsset(asset.id, assetData);
-      } else {
-        // Add new asset
-        addVITAsset(assetData);
-      }
-      
-      onSubmit();
-    } catch (error) {
-      console.error("Error submitting VIT asset:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
+
+    const assetData: Omit<VITAsset, "id" | "createdAt" | "updatedAt"> = {
+      regionId: formData.regionId,
+      districtId: formData.districtId,
+      voltageLevel: formData.voltageLevel as VoltageLevel,
+      typeOfUnit: formData.typeOfUnit,
+      serialNumber: formData.serialNumber,
+      location: formData.location,
+      gpsCoordinates: formData.gpsCoordinates,
+      status: formData.status as VITStatus,
+      protection: formData.protection,
+      photoUrl: formData.photoUrl,
+      createdBy: user?.name || "Anonymous"
+    };
+
+    addVITAsset(assetData);
+    navigate("/vit-assets");
   };
-  
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{asset ? "Edit VIT Asset" : "Add New VIT Asset"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="region">Region *</Label>
-              <Select 
-                value={regionId} 
-                onValueChange={setRegionId}
-                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer"}
-                required
-              >
-                <SelectTrigger id="region">
-                  <SelectValue placeholder="Select region" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredRegions.map(region => (
-                    <SelectItem key={region.id} value={region.id || "unknown-region"}>
-                      {region.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <div className="container py-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Add New VIT Asset</h1>
+          <p className="text-muted-foreground mt-1">
+            Fill in the details to register a new VIT asset
+          </p>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>VIT Asset Details</CardTitle>
+          <CardDescription>Enter the basic information about the VIT asset</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="region">Region</Label>
+                <Select
+                  value={regionId}
+                  onValueChange={handleRegionChange}
+                  disabled={user?.role === "district_engineer" || user?.role === "regional_engineer"}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredRegions.map((region) => (
+                      <SelectItem key={region.id} value={region.id}>
+                        {region.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="district">District</Label>
+                <Select
+                  value={districtId}
+                  onValueChange={handleDistrictChange}
+                  disabled={user?.role === "district_engineer" || !regionId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select district" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredDistricts.map((district) => (
+                      <SelectItem key={district.id} value={district.id}>
+                        {district.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="voltageLevel">Voltage Level</Label>
+                <Select
+                  value={formData.voltageLevel}
+                  onValueChange={(value) => handleInputChange("voltageLevel", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select voltage level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="11KV">11KV</SelectItem>
+                    <SelectItem value="33KV">33KV</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="typeOfUnit">Type of Unit</Label>
+                <Input
+                  type="text"
+                  id="typeOfUnit"
+                  value={formData.typeOfUnit || ""}
+                  onChange={(e) => handleInputChange("typeOfUnit", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Input
+                  type="text"
+                  id="serialNumber"
+                  value={formData.serialNumber || ""}
+                  onChange={(e) => handleInputChange("serialNumber", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  type="text"
+                  id="location"
+                  value={formData.location || ""}
+                  onChange={(e) => handleInputChange("location", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gpsCoordinates">GPS Coordinates</Label>
+                <Input
+                  type="text"
+                  id="gpsCoordinates"
+                  value={formData.gpsCoordinates || ""}
+                  onChange={(e) => handleInputChange("gpsCoordinates", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleInputChange("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Operational">Operational</SelectItem>
+                    <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
+                    <SelectItem value="Faulty">Faulty</SelectItem>
+                    <SelectItem value="Decommissioned">Decommissioned</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="protection">Protection</Label>
+                <Input
+                  type="text"
+                  id="protection"
+                  value={formData.protection || ""}
+                  onChange={(e) => handleInputChange("protection", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="photoUrl">Photo URL (Optional)</Label>
+                <Input
+                  type="text"
+                  id="photoUrl"
+                  value={formData.photoUrl || ""}
+                  onChange={(e) => handleInputChange("photoUrl", e.target.value)}
+                />
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="district">District *</Label>
-              <Select 
-                value={districtId} 
-                onValueChange={setDistrictId}
-                disabled={user?.role === "district_engineer" || !regionId}
-                required
-              >
-                <SelectTrigger id="district">
-                  <SelectValue placeholder="Select district" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredDistricts.map(district => (
-                    <SelectItem key={district.id} value={district.id || "unknown-district"}>
-                      {district.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="voltageLevel">Voltage Level *</Label>
-              <Select 
-                value={voltageLevel} 
-                onValueChange={(val) => setVoltageLevel(val as VoltageLevel)}
-                required
-              >
-                <SelectTrigger id="voltageLevel">
-                  <SelectValue placeholder="Select voltage level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="11KV">11KV</SelectItem>
-                  <SelectItem value="33KV">33KV</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select 
-                value={status} 
-                onValueChange={(val) => setStatus(val as VITStatus)}
-                required
-              >
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Operational">Operational</SelectItem>
-                  <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
-                  <SelectItem value="Faulty">Faulty</SelectItem>
-                  <SelectItem value="Decommissioned">Decommissioned</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="typeOfUnit">Type of Unit *</Label>
-              <Input
-                id="typeOfUnit"
-                value={typeOfUnit}
-                onChange={(e) => setTypeOfUnit(e.target.value)}
-                placeholder="E.g., Ring Main Unit, Circuit Breaker"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="serialNumber">Serial Number *</Label>
-              <Input
-                id="serialNumber"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                placeholder="E.g., RMU2023-001"
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="location">Location *</Label>
-            <Input
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="E.g., Main Street Substation"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="gpsCoordinates">GPS Coordinates</Label>
-            <div className="flex gap-2">
-              <Input
-                id="gpsCoordinates"
-                value={gpsCoordinates}
-                onChange={(e) => setGpsCoordinates(e.target.value)}
-                placeholder="Latitude, Longitude"
-                className="flex-1"
-              />
-              <Button 
-                type="button"
-                variant="outline"
-                onClick={handleGetLocation}
-                disabled={isGettingLocation}
-              >
-                {isGettingLocation ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                ) : (
-                  <MapPin className="h-4 w-4 mr-1" />
-                )}
-                Get Location
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                Cancel
               </Button>
+              <Button type="submit">Add Asset</Button>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="protection">Protection</Label>
-            <Input
-              id="protection"
-              value={protection}
-              onChange={(e) => setProtection(e.target.value)}
-              placeholder="E.g., Overcurrent, Earth Fault"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="photoUrl">Photo URL</Label>
-            <Input
-              id="photoUrl"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              placeholder="URL to asset photo (if available)"
-            />
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {asset ? "Updating..." : "Adding..."}
-            </>
-          ) : (
-            asset ? "Update Asset" : "Add Asset"
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
