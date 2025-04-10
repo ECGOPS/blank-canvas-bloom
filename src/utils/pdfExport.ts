@@ -1,4 +1,3 @@
-
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { VITAsset, VITInspectionChecklist, SubstationInspection, InspectionItem } from "@/lib/types";
 import { formatDate } from "@/utils/calculations";
@@ -14,6 +13,9 @@ declare module "jspdf" {
     };
     autoTable: (options: any) => jsPDF;
     setPage: (pageNumber: number) => jsPDF;
+    internal: {
+      getNumberOfPages: () => number;
+    };
   }
 }
 
@@ -593,7 +595,7 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
   doc.text(`District: ${inspection.district}`, 105, startY + 16);
   doc.text(`Date: ${formatDate(inspection.date)}`, 15, startY + 24);
   doc.text(`Type: ${inspection.type.toUpperCase()}`, 105, startY + 24);
-  doc.text(`Inspected By: ${inspection.createdBy}`, 15, startY + 32);
+  doc.text(`Inspected By: ${inspection.createdBy || "N/A"}`, 15, startY + 32);
   
   startY = 80;
   
@@ -752,8 +754,8 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
     ["District", inspection.district],
     ["Date", formatDate(inspection.date)],
     ["Type", inspection.type],
-    ["Created By", inspection.createdBy],
-    ["Created At", new Date(inspection.createdAt).toLocaleString()]
+    ["Created By", inspection.createdBy || "N/A"],
+    ["Created At", inspection.createdAt ? new Date(inspection.createdAt).toLocaleString() : "N/A"]
   ];
 
   // Create header rows for each inspection category
@@ -802,87 +804,4 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
   // Create and trigger download
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `substation-inspection-${inspection.substationNo}-${formatDate(inspection.date)}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-/**
- * Export all substation inspections to a single CSV file
- */
-export const exportAllSubstationInspectionsToCsv = (inspections: SubstationInspection[]) => {
-  if (!inspections || inspections.length === 0) return;
-  
-  // Create header row
-  const headers = [
-    "ID", 
-    "Date", 
-    "Substation No", 
-    "Substation Name",
-    "Region", 
-    "District", 
-    "Type", 
-    "Total Items",
-    "Good Items",
-    "Items Needing Attention",
-    "Overall Condition",
-    "Created By", 
-    "Created At"
-  ];
-  
-  // Create CSV rows
-  let csvRows = [headers.join(",")];
-  
-  // Add data rows
-  inspections.forEach(inspection => {
-    const allItems = inspection.items.flatMap(category => category.items || []);
-    const totalItems = allItems.length;
-    const goodItems = allItems.filter(item => item?.status === "good").length;
-    const badItems = totalItems - goodItems;
-    const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
-    
-    const condition = percentageGood >= 90 ? "Excellent" : 
-                     percentageGood >= 75 ? "Good" : 
-                     percentageGood >= 60 ? "Fair" : "Poor";
-    
-    const row = [
-      inspection.id,
-      formatDate(inspection.date),
-      inspection.substationNo,
-      inspection.substationName || "",
-      inspection.region,
-      inspection.district,
-      inspection.type,
-      totalItems.toString(),
-      goodItems.toString(),
-      badItems.toString(),
-      condition,
-      inspection.createdBy,
-      new Date(inspection.createdAt).toLocaleString()
-    ];
-    
-    csvRows.push(row.map(item => `"${item}"`).join(","));
-  });
-  
-  // Join all rows
-  const csvContent = csvRows.join("\n");
-  
-  // Create and trigger download
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `all-substation-inspections-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+  const url = URL.createObjectURL

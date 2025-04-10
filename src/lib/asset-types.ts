@@ -45,6 +45,9 @@ export interface InspectionCategory {
   category: string;
   description?: string;
   items: InspectionItem[];
+  remarks?: string;
+  status?: ConditionStatus;
+  name?: string;
 }
 
 export interface SubstationInspectionData {
@@ -53,7 +56,7 @@ export interface SubstationInspectionData {
   district: string;
   date: string;
   substationNo: string;
-  substationName: string;
+  substationName?: string;
   type: 'indoor' | 'outdoor';
   items: InspectionCategory[];
   createdAt: string;
@@ -87,15 +90,13 @@ export interface VITInspectionData {
 
 export type SubstationInspection = {
   id: string;
-  regionId: string;
-  districtId: string;
   region: string;
   district: string;
   date: string;
   substationNo: string;
-  substationName: string;
+  substationName?: string;
   type: 'indoor' | 'outdoor';
   items: InspectionCategory[];
-  createdBy: string;
-  createdAt: string;
+  createdBy?: string;
+  createdAt?: string;
 };
