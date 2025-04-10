@@ -8,13 +8,17 @@ type ChecklistItemProps = {
 }
 
 export const InspectionChecklistItem: React.FC<ChecklistItemProps> = ({ label, value, isPositive }) => {
+  // Safely handle undefined or null values
+  const displayValue = value ?? "N/A";
+  const isValid = value ? isPositive(value) : false;
+  
   return (
     <li className="flex justify-between">
       <span className="text-sm">{label}</span>
       <span className={`text-sm font-medium ${
-        isPositive(value) ? "text-green-600" : "text-red-600"
+        isValid ? "text-green-600" : "text-red-600"
       }`}>
-        {value}
+        {displayValue}
       </span>
     </li>
   );
