@@ -684,9 +684,8 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
   }
 
   // Add summary
-  const allItems = inspection.items.flatMap(category => category.items || []);
-  const totalItems = allItems.length;
-  const goodItems = allItems.filter(item => item?.status === "good").length;
+  const totalItems = inspection.items ? inspection.items.length : 0;
+  const goodItems = inspection.items ? inspection.items.filter(item => item.status === "good").length : 0;
   const badItems = totalItems - goodItems;
   const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
   
@@ -710,4 +709,4 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
   const url = URL.createObjectURL(blob);
   
   link.setAttribute("href", url);
-  link.setAttribute("download", `
+  link.setAttribute("download", `substation-
