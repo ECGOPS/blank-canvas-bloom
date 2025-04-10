@@ -1,3 +1,4 @@
+
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { VITAsset, VITInspectionChecklist, SubstationInspection, InspectionItem } from "@/lib/types";
 import { formatDate } from "@/utils/calculations";
@@ -888,4 +889,43 @@ export const exportAllSubstationInspectionsToCsv = (inspections: SubstationInspe
   inspections.forEach(inspection => {
     const allItems = inspection.items.flatMap(category => category.items || []);
     const totalItems = allItems.length;
-    const goodItems = allItems.filter(item => item?.status === "good").
+    const goodItems = allItems.filter(item => item?.status === "good").length;
+    const badItems = totalItems - goodItems;
+    const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
+    const overallCondition = percentageGood >= 90 ? "Excellent" : 
+                            percentageGood >= 75 ? "Good" : 
+                            percentageGood >= 60 ? "Fair" : "Poor";
+    
+    const row = [
+      inspection.id,
+      formatDate(inspection.date),
+      inspection.substationNo,
+      inspection.substationName || "",
+      inspection.region,
+      inspection.district,
+      inspection.type,
+      totalItems,
+      goodItems,
+      badItems,
+      overallCondition,
+      inspection.createdBy || "",
+      inspection.createdAt ? new Date(inspection.createdAt).toLocaleString() : ""
+    ];
+    
+    csvRows.push(row.map(value => `"${value}"`).join(","));
+  });
+  
+  // Join rows and create download
+  const csvContent = csvRows.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `all-substation-inspections-${new Date().toISOString().slice(0,10)}.csv`);
+  link.style.visibility = "hidden";
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
