@@ -1,6 +1,6 @@
-
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { VITAsset, VITInspectionChecklist, SubstationInspection, InspectionItem } from "@/lib/types";
+import { VITAsset, VITInspectionChecklist, SubstationInspection } from "@/lib/types";
+import { LoadMonitoringData } from "@/lib/asset-types";
 import { formatDate } from "@/utils/calculations";
 import { format } from 'date-fns';
 import { jsPDF } from "jspdf";
@@ -31,27 +31,31 @@ declare module "jspdf" {
 }
 
 /**
- * Export VIT Asset data to CSV format
+ * Export a single VIT asset to CSV format
  */
-export const exportVITAssetToCsv = (assets: VITAsset[]) => {
-  const header = "Region,District,Voltage Level,Type of Unit,Serial Number,Location,GPS Coordinates,Status,Protection,Photo URL,Created By\n";
-  const csv = assets.map(asset => {
-    return `${asset.regionId},${asset.districtId},${asset.voltageLevel},${asset.typeOfUnit},${asset.serialNumber},${asset.location},${asset.gpsCoordinates},${asset.status},${asset.protection},${asset.photoUrl || ''},${asset.createdBy}`;
-  }).join('\n');
+export const exportVITAssetToCsv = (asset: VITAsset) => {
+  const header = "ID,Region,District,Voltage Level,Type of Unit,Serial Number,Location,GPS Coordinates,Status,Protection,Created At,Created By\n";
+  const csv = header + `${asset.id},${asset.regionId},${asset.districtId},${asset.voltageLevel},${asset.typeOfUnit},${asset.serialNumber},${asset.location},${asset.gpsCoordinates},${asset.status},${asset.protection},${asset.createdAt},${asset.createdBy}\n`;
 
-  return header + csv;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `vit-asset-${asset.serialNumber}.csv`;
+  link.click();
 };
 
 /**
- * Export VIT Inspection data to CSV format
+ * Export a single VIT inspection to CSV format
  */
-export const exportVITInspectionToCsv = (inspections: VITInspectionChecklist[]) => {
-  const header = "VIT Asset ID,Inspection Date,Inspected By,Rodent/Termite Encroachment,Clean and Dust Free,Protection Button Enabled,Recloser Button Enabled,Ground Earth Button Enabled,AC Power On,Battery Power Low,Handle Lock On,Remote Button Enabled,Gas Level Low,Earthing Arrangement Adequate,No Fuses Blown,No Damage to Bushings,No Damage to HV Connections,Insulators Clean,Paintwork Adequate,PT Fuse Link Intact,No Corrosion,Silica Gel Condition,Correct Labelling,Remarks\n";
-  const csv = inspections.map(inspection => {
-    return `${inspection.vitAssetId},${formatDate(inspection.inspectionDate)},${inspection.inspectedBy},${inspection.rodentTermiteEncroachment},${inspection.cleanDustFree},${inspection.protectionButtonEnabled},${inspection.recloserButtonEnabled},${inspection.groundEarthButtonEnabled},${inspection.acPowerOn},${inspection.batteryPowerLow},${inspection.handleLockOn},${inspection.remoteButtonEnabled},${inspection.gasLevelLow},${inspection.earthingArrangementAdequate},${inspection.noFusesBlown},${inspection.noDamageToBushings},${inspection.noDamageToHVConnections},${inspection.insulatorsClean},${inspection.paintworkAdequate},${inspection.ptFuseLinkIntact},${inspection.noCorrosion},${inspection.silicaGelCondition},${inspection.correctLabelling},${inspection.remarks || ''}`;
-  }).join('\n');
+export const exportVITInspectionToCsv = (inspection: VITInspectionChecklist) => {
+  const header = "ID,Asset ID,Inspection Date,Rodent/Termite Encroachment,Clean/Dust Free,Protection Button Enabled,Recloser Button Enabled,Ground/Earth Button Enabled,AC Power On,Battery Power Low,Handle Lock On,Remote Button Enabled,Gas Level Low,Earthing Arrangement Adequate,No Fuses Blown,No Damage to Bushings,No Damage to HV Connections,Insulators Clean,Paintwork Adequate,PT Fuse Link Intact,No Corrosion,Silica Gel Condition,Correct Labelling,Remarks\n";
+  const csv = header + `${inspection.id},${inspection.assetId},${inspection.inspectionDate},${inspection.rodentTermiteEncroachment},${inspection.cleanDustFree},${inspection.protectionButtonEnabled},${inspection.recloserButtonEnabled},${inspection.groundEarthButtonEnabled},${inspection.acPowerOn},${inspection.batteryPowerLow},${inspection.handleLockOn},${inspection.remoteButtonEnabled},${inspection.gasLevelLow},${inspection.earthingArrangementAdequate},${inspection.noFusesBlown},${inspection.noDamageToBushings},${inspection.noDamageToHVConnections},${inspection.insulatorsClean},${inspection.paintworkAdequate},${inspection.ptFuseLinkIntact},${inspection.noCorrosion},${inspection.silicaGelCondition},${inspection.correctLabelling},${inspection.remarks}\n`;
 
-  return header + csv;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `vit-inspection-${inspection.id}.csv`;
+  link.click();
 };
 
 /**
@@ -59,7 +63,7 @@ export const exportVITInspectionToCsv = (inspections: VITInspectionChecklist[]) 
  */
 export const exportVITAssetToPDF = async (asset: VITAsset, inspections: VITInspectionChecklist[]) => {
   const pdfDoc = await PDFDocument.create();
-  let page = pdfDoc.addPage();  // Changed from const to let to allow reassignment
+  let page = pdfDoc.addPage();
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -78,173 +82,72 @@ export const exportVITAssetToPDF = async (asset: VITAsset, inspections: VITInspe
     });
   };
 
-  // Draw header with logo-like styling
-  drawText("ELECTRICITY COMPANY OF GHANA", page.getWidth() / 2 - 150, y, { size: 18, bold: true });
-  y -= lineHeight;
-  drawText("VIT ASSET INSPECTION REPORT", page.getWidth() / 2 - 130, y, { size: 16, bold: true });
-  y -= lineHeight * 2;
-
-  // Add horizontal line
-  const lineWidth = page.getWidth() - 100;
-  page.drawLine({
-    start: { x: 50, y },
-    end: { x: 50 + lineWidth, y },
-    thickness: 1,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
-
-  // Asset Information in a table-like format
-  drawText("ASSET INFORMATION", 50, y, { bold: true, size: 14 });
+  // Asset Information
+  drawText(`VIT Asset Report - Serial Number: ${asset.serialNumber}`, 50, y, { font: boldFont, size: 16 });
   y -= lineHeight * 1.5;
 
-  // Two-column layout
-  const col1 = 50;
-  const col2 = 150;
-  const col3 = 320;
-  const col4 = 420;
-
-  drawText("Serial Number:", col1, y, { bold: true });
-  drawText(asset.serialNumber, col2, y);
-  drawText("Type of Unit:", col3, y, { bold: true });
-  drawText(asset.typeOfUnit, col4, y);
+  drawText(`Region: ${asset.regionId}`, 50, y);
+  drawText(`District: ${asset.districtId}`, 300, y);
   y -= lineHeight;
 
-  drawText("Voltage Level:", col1, y, { bold: true });
-  drawText(asset.voltageLevel, col2, y);
-  drawText("Status:", col3, y, { bold: true });
-  drawText(asset.status, col4, y);
+  drawText(`Voltage Level: ${asset.voltageLevel}`, 50, y);
+  drawText(`Type of Unit: ${asset.typeOfUnit}`, 300, y);
   y -= lineHeight;
 
-  drawText("Location:", col1, y, { bold: true });
-  drawText(asset.location, col2, y);
-  drawText("Protection:", col3, y, { bold: true });
-  drawText(asset.protection, col4, y);
+  drawText(`Location: ${asset.location}`, 50, y);
+  drawText(`GPS Coordinates: ${asset.gpsCoordinates}`, 300, y);
   y -= lineHeight;
 
-  drawText("GPS Coordinates:", col1, y, { bold: true });
-  drawText(asset.gpsCoordinates, col2, y);
-  y -= lineHeight * 2;
-
-  // Add another horizontal line
-  page.drawLine({
-    start: { x: 50, y },
-    end: { x: 50 + lineWidth, y },
-    thickness: 1,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
+  drawText(`Status: ${asset.status}`, 50, y);
+  drawText(`Protection: ${asset.protection}`, 300, y);
+  y -= lineHeight * 1.5;
 
   // Inspection Checklists
   if (inspections && inspections.length > 0) {
-    drawText("INSPECTION RECORDS", 50, y, { bold: true, size: 14 });
-    y -= lineHeight * 1.5;
+    drawText("Inspection Checklists:", 50, y, { font: boldFont, size: 14 });
+    y -= lineHeight;
 
     for (const inspection of inspections) {
-      // Draw box around each inspection
-      const boxStartY = y + lineHeight / 2;
-      const itemCount = 21 + (inspection.remarks ? 1 : 0); // Count of checklist items + date + remarks if present
-      const boxHeight = lineHeight * (itemCount / 2 + 2); // Adjust based on number of items
+      drawText(`Inspection Date: ${formatDate(inspection.inspectionDate)}`, 60, y, { bold: true });
+      y -= lineHeight;
 
-      // Check if we need a new page for this inspection
-      if (y - boxHeight < 50) {
-        page = pdfDoc.addPage();
-        y = page.getHeight() - 50;
-      }
-
-      // Draw inspection header box
-      page.drawRectangle({
-        x: 40,
-        y: y - lineHeight / 2,
-        width: page.getWidth() - 80,
-        height: lineHeight * 1.5,
-        borderColor: rgb(0, 0, 0),
-        borderWidth: 1,
-        color: rgb(0.9, 0.9, 0.9),
-      });
-
-      drawText(`Inspection Date: ${formatDate(inspection.inspectionDate)}`, 50, y, { bold: true });
-      drawText(`Inspector: ${inspection.inspectedBy}`, page.getWidth() / 2, y, { bold: true });
-      y -= lineHeight * 1.5;
-
-      // Draw content box
-      page.drawRectangle({
-        x: 40,
-        y: y - (boxHeight - lineHeight * 1.5) + lineHeight / 2,
-        width: page.getWidth() - 80,
-        height: boxHeight - lineHeight * 1.5,
-        borderColor: rgb(0, 0, 0),
-        borderWidth: 1,
-      });
-
-      // Organize checklist items in two columns
-      const leftColumnItems = [
-        { label: "Rodent/Termite Encroachment", value: inspection.rodentTermiteEncroachment },
-        { label: "Clean and Dust Free", value: inspection.cleanDustFree },
-        { label: "Protection Button Enabled", value: inspection.protectionButtonEnabled },
-        { label: "Recloser Button Enabled", value: inspection.recloserButtonEnabled },
-        { label: "Ground Earth Button Enabled", value: inspection.groundEarthButtonEnabled },
-        { label: "AC Power On", value: inspection.acPowerOn },
-        { label: "Battery Power Low", value: inspection.batteryPowerLow },
-        { label: "Handle Lock On", value: inspection.handleLockOn },
-        { label: "Remote Button Enabled", value: inspection.remoteButtonEnabled },
-        { label: "Gas Level Low", value: inspection.gasLevelLow },
+      const checklistItems = [
+        `Rodent/Termite Encroachment: ${inspection.rodentTermiteEncroachment}`,
+        `Clean/Dust Free: ${inspection.cleanDustFree}`,
+        `Protection Button Enabled: ${inspection.protectionButtonEnabled}`,
+        `Recloser Button Enabled: ${inspection.recloserButtonEnabled}`,
+        `Ground/Earth Button Enabled: ${inspection.groundEarthButtonEnabled}`,
+        `AC Power On: ${inspection.acPowerOn}`,
+        `Battery Power Low: ${inspection.batteryPowerLow}`,
+        `Handle Lock On: ${inspection.handleLockOn}`,
+        `Remote Button Enabled: ${inspection.remoteButtonEnabled}`,
+        `Gas Level Low: ${inspection.gasLevelLow}`,
+        `Earthing Arrangement Adequate: ${inspection.earthingArrangementAdequate}`,
+        `No Fuses Blown: ${inspection.noFusesBlown}`,
+        `No Damage to Bushings: ${inspection.noDamageToBushings}`,
+        `No Damage to HV Connections: ${inspection.noDamageToHVConnections}`,
+        `Insulators Clean: ${inspection.insulatorsClean}`,
+        `Paintwork Adequate: ${inspection.paintworkAdequate}`,
+        `PT Fuse Link Intact: ${inspection.ptFuseLinkIntact}`,
+        `No Corrosion: ${inspection.noCorrosion}`,
+        `Silica Gel Condition: ${inspection.silicaGelCondition}`,
+        `Correct Labelling: ${inspection.correctLabelling}`,
+        `Remarks: ${inspection.remarks}`,
       ];
 
-      const rightColumnItems = [
-        { label: "Earthing Arrangement Adequate", value: inspection.earthingArrangementAdequate },
-        { label: "No Fuses Blown", value: inspection.noFusesBlown },
-        { label: "No Damage to Bushings", value: inspection.noDamageToBushings },
-        { label: "No Damage to HV Connections", value: inspection.noDamageToHVConnections },
-        { label: "Insulators Clean", value: inspection.insulatorsClean },
-        { label: "Paintwork Adequate", value: inspection.paintworkAdequate },
-        { label: "PT Fuse Link Intact", value: inspection.ptFuseLinkIntact },
-        { label: "No Corrosion", value: inspection.noCorrosion },
-        { label: "Silica Gel Condition", value: inspection.silicaGelCondition },
-        { label: "Correct Labelling", value: inspection.correctLabelling },
-      ];
-
-      // Left column
-      let columnY = y;
-      for (const item of leftColumnItems) {
-        const isGood = getStatusColor(item.label, item.value);
-        drawText(`${item.label}:`, 50, columnY, { bold: true });
-        drawText(item.value, 230, columnY, { color: isGood ? rgb(0, 0.5, 0) : rgb(0.8, 0, 0) });
-        columnY -= lineHeight;
-      }
-
-      // Right column
-      columnY = y;
-      for (const item of rightColumnItems) {
-        const isGood = getStatusColor(item.label, item.value);
-        drawText(`${item.label}:`, page.getWidth() / 2, columnY, { bold: true });
-        drawText(item.value, page.getWidth() / 2 + 180, columnY, { color: isGood ? rgb(0, 0.5, 0) : rgb(0.8, 0, 0) });
-        columnY -= lineHeight;
-      }
-
-      y -= lineHeight * 10; // Move down after the columns
-
-      // Add remarks if present
-      if (inspection.remarks) {
-        drawText("Remarks:", 50, y, { bold: true });
-        drawText(inspection.remarks, 120, y);
+      for (const item of checklistItems) {
+        drawText(item, 70, y);
         y -= lineHeight;
+        if (y < 50) {
+          page = pdfDoc.addPage();
+          y = page.getHeight() - 50;
+        }
       }
-
-      y -= lineHeight * 1.5; // Space between inspections
+      y -= lineHeight * 0.5; // Space between inspections
     }
   } else {
     drawText("No inspection checklists available for this asset.", 50, y);
     y -= lineHeight;
-  }
-
-  // Add page numbers and footer
-  const pageCount = pdfDoc.getPageCount();
-  for (let i = 0; i < pageCount; i++) {
-    const pageObj = pdfDoc.getPage(i);
-    const pageY = 30;
-    pageObj.drawText(`Page ${i + 1} of ${pageCount}`, pageObj.getWidth() - 100, pageY);
-    pageObj.drawText(`Generated: ${format(new Date(), 'PPP')}`, 50, pageY);
   }
 
   // Save the PDF with a descriptive name
@@ -256,19 +159,8 @@ export const exportVITAssetToPDF = async (asset: VITAsset, inspections: VITInspe
   link.click();
 };
 
-// Helper function for inspection status colors
-const getStatusColor = (key: string, value: string): boolean => {
-  if (key === 'Rodent/Termite Encroachment' || key === 'Battery Power Low' || key === 'Gas Level Low') {
-    return value === "No";
-  } else if (key === 'Silica Gel Condition') {
-    return value === "Good";
-  } else {
-    return value === "Yes";
-  }
-};
-
 /**
- * Generate PDF report for Substation inspection
+ * Generate comprehensive PDF report for Substation inspection
  */
 export const exportSubstationInspectionToPDF = async (inspection: SubstationInspection) => {
   const doc = new jsPDF();
@@ -292,7 +184,7 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
   doc.text(`Substation Number: ${inspection.substationNo}`, 20, startY);
   
   // Instead of using inspection.substationName, use substationNo as fallback
-  doc.text(`Substation Name: ${inspection.substationName || "N/A"}`, 105, startY + 8);
+  doc.text(`Substation Name: ${inspection.substationName || "N/A"}`, 105, startY);
   
   doc.text(`Region: ${inspection.region}`, 20, startY + 8);
   doc.text(`District: ${inspection.district}`, 20, startY + 16);
@@ -347,457 +239,244 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
  * Export a single substation inspection to CSV format
  */
 export const exportSubstationInspectionToCsv = (inspection: SubstationInspection) => {
-  // Create basic info rows
-  const basicInfo = [
-    ["Substation Number", inspection.substationNo],
-    ["Substation Name", inspection.substationName || ""],
-    ["Region", inspection.region],
-    ["District", inspection.district],
-    ["Date", formatDate(inspection.date)],
-    ["Type", inspection.type],
-    ["Created By", inspection.createdBy || "N/A"],
-    ["Created At", inspection.createdAt ? new Date(inspection.createdAt).toLocaleString() : "N/A"]
-  ];
+  let csvContent = "data:text/csv;charset=utf-8,";
 
-  // Create inspection items rows
-  const inspectionItems = inspection.items.flatMap(category =>
-    category.items.map(item => [category.name, item.name, item.status, item.remarks])
-  );
+  // Add headers
+  const headers = Object.keys(inspection).join(",");
+  csvContent += headers + "\r\n";
 
-  // Combine all rows
-  const csvRows = [
-    ...basicInfo.map(row => row.join(",")),
-    ["Category", "Item", "Status", "Remarks"].join(","), // Header for inspection items
-    ...inspectionItems.map(row => row.join(",")),
-  ];
+  // Convert the inspection object to an array of its values
+  const values = Object.values(inspection);
+  const row = values.join(",");
+  csvContent += row + "\r\n";
 
-  // Join rows with newline character
-  const csvContent = csvRows.join("\n");
-
-  // Create and trigger download
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  // Create a download link
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `substation-inspection-${inspection.substationNo}-${formatDate(inspection.date)}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `substation_inspection_${inspection.substationNo}.csv`);
+  document.body.appendChild(link); // Required for Firefox
+
+  link.click(); // Simulate click to trigger download
 };
 
 /**
  * Export all substation inspections to a single CSV file
  */
 export const exportAllSubstationInspectionsToCsv = (inspections: SubstationInspection[]) => {
-  if (!inspections || inspections.length === 0) {
+  let csvContent = "data:text/csv;charset=utf-8,";
+
+  if (inspections.length === 0) {
+    alert("No inspections data to export.");
     return;
   }
-  
-  // Create header row
-  const headers = [
-    "ID",
-    "Substation Number", 
-    "Substation Name",
-    "Region", 
-    "District", 
-    "Date", 
-    "Type", 
-    "Items Count", 
-    "Good Items", 
-    "Bad Items", 
-    "Created By", 
-    "Created At"
-  ];
-  
-  // Create data rows for each inspection
-  const rows = inspections.map(inspection => {
-    const allItems = inspection.items
-      .flatMap(category => category && category.items ? category.items : [])
-      .filter(item => item !== undefined);
-    
-    const totalItems = allItems.length;
-    const goodItems = allItems.filter(item => item && item.status === "good").length;
-    const badItems = totalItems - goodItems;
-    
-    return [
-      inspection.id,
-      inspection.substationNo,
-      inspection.substationName || "",
-      inspection.region,
-      inspection.district,
-      formatDate(inspection.date),
-      inspection.type,
-      totalItems.toString(),
-      goodItems.toString(),
-      badItems.toString(),
-      inspection.createdBy || "N/A",
-      inspection.createdAt ? new Date(inspection.createdAt).toLocaleString() : "N/A"
-    ];
+
+  // Add headers (use keys from the first inspection object)
+  const headers = Object.keys(inspections[0]).join(",");
+  csvContent += headers + "\r\n";
+
+  // Add rows for each inspection
+  inspections.forEach(inspection => {
+    const values = Object.values(inspection).join(",");
+    csvContent += values + "\r\n";
   });
-  
-  // Combine headers and data
-  const csvContent = [
-    headers.join(","),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
-  ].join("\n");
-  
-  // Create and trigger download
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+  // Create a download link
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `all-substation-inspections-${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "all_substation_inspections.csv");
+  document.body.appendChild(link); // Required for Firefox
+
+  link.click(); // Simulate click to trigger download
 };
 
 /**
- * Export VIT inspection to CSV and PDF formats
+ * Export load monitoring data to PDF
  */
-export const exportInspectionToCsv = (inspection: VITInspectionChecklist, asset: VITAsset | null, getRegionName: (id: string) => string, getDistrictName: (id: string) => string) => {
-  // Create header row
-  const headers = [
-    "Asset Serial Number",
-    "Asset Type",
-    "Asset Location",
-    "Region",
-    "District",
-    "Inspection Date", 
-    "Inspected By",
-    "Rodent/Termite Encroachment", 
-    "Clean and Dust Free",
-    "Protection Button Enabled", 
-    "Recloser Button Enabled", 
-    "Ground Earth Button Enabled",
-    "AC Power On", 
-    "Battery Power Low", 
-    "Handle Lock On", 
-    "Remote Button Enabled", 
-    "Gas Level Low",
-    "Earthing Arrangement Adequate", 
-    "No Fuses Blown", 
-    "No Damage to Bushings", 
-    "No Damage to HV Connections",
-    "Insulators Clean", 
-    "Paintwork Adequate", 
-    "PT Fuse Link Intact", 
-    "No Corrosion", 
-    "Silica Gel Condition",
-    "Correct Labelling", 
-    "Remarks"
-  ];
-
-  // Create data row
-  const data = [
-    asset?.serialNumber || "",
-    asset?.typeOfUnit || "",
-    asset?.location || "",
-    asset ? getRegionName(asset.regionId) : "",
-    asset ? getDistrictName(asset.districtId) : "",
-    formatDate(inspection.inspectionDate),
-    inspection.inspectedBy,
-    inspection.rodentTermiteEncroachment,
-    inspection.cleanDustFree,
-    inspection.protectionButtonEnabled,
-    inspection.recloserButtonEnabled,
-    inspection.groundEarthButtonEnabled,
-    inspection.acPowerOn,
-    inspection.batteryPowerLow,
-    inspection.handleLockOn,
-    inspection.remoteButtonEnabled,
-    inspection.gasLevelLow,
-    inspection.earthingArrangementAdequate,
-    inspection.noFusesBlown,
-    inspection.noDamageToBushings,
-    inspection.noDamageToHVConnections,
-    inspection.insulatorsClean,
-    inspection.paintworkAdequate,
-    inspection.ptFuseLinkIntact,
-    inspection.noCorrosion,
-    inspection.silicaGelCondition,
-    inspection.correctLabelling,
-    inspection.remarks || ""
-  ];
-
-  // Combine headers and data
-  const csvContent = [
-    headers.join(","),
-    data.map(item => `"${item}"`).join(",")
-  ].join("\n");
-
-  // Create and trigger download
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `vit-inspection-${inspection.id}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-export const exportInspectionToPDF = (inspection: VITInspectionChecklist, asset: VITAsset | null, getRegionName: (id: string) => string, getDistrictName: (id: string) => string): string => {
-  const doc = new jsPDF();
-
-  // Header styling
-  doc.setFontSize(18);
-  doc.setTextColor(0, 0, 0);
-  doc.text("ELECTRICITY COMPANY OF GHANA", 105, 20, { align: "center" });
-  doc.setFontSize(16);
-  doc.text("VIT INSPECTION REPORT", 105, 30, { align: "center" });
-
-  // Horizontal line
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.line(20, 35, 190, 35);
-
-  // Asset information section
-  doc.setFontSize(14);
-  doc.text("ASSET INFORMATION", 20, 45);
-  
-  doc.setFontSize(11);
-  doc.text(`Serial Number: ${asset?.serialNumber || "N/A"}`, 20, 55);
-  doc.text(`Type of Unit: ${asset?.typeOfUnit || "N/A"}`, 120, 55);
-  
-  doc.text(`Voltage Level: ${asset?.voltageLevel || "N/A"}`, 20, 62);
-  doc.text(`Status: ${asset?.status || "N/A"}`, 120, 62);
-  
-  doc.text(`Location: ${asset?.location || "N/A"}`, 20, 69);
-  doc.text(`Region: ${asset ? getRegionName(asset.regionId) : "N/A"}`, 120, 69);
-  
-  doc.text(`GPS Coordinates: ${asset?.gpsCoordinates || "N/A"}`, 20, 76);
-  doc.text(`District: ${asset ? getDistrictName(asset.districtId) : "N/A"}`, 120, 76);
-
-  // Inspection information section
-  doc.setFontSize(14);
-  doc.text("INSPECTION DETAILS", 20, 90);
-  
-  doc.setFontSize(11);
-  doc.text(`Inspection Date: ${formatDate(inspection.inspectionDate)}`, 20, 100);
-  doc.text(`Inspected By: ${inspection.inspectedBy}`, 120, 100);
-
-  // Create a table for inspection items
-  const tableColumn1 = ["Item", "Status"];
-  const tableColumn2 = ["Item", "Status"];
-  
-  const tableRows1 = [
-    ["Rodent/Termite Encroachment", inspection.rodentTermiteEncroachment],
-    ["Clean and Dust Free", inspection.cleanDustFree],
-    ["Protection Button Enabled", inspection.protectionButtonEnabled],
-    ["Recloser Button Enabled", inspection.recloserButtonEnabled],
-    ["Ground Earth Button Enabled", inspection.groundEarthButtonEnabled],
-    ["AC Power On", inspection.acPowerOn],
-    ["Battery Power Low", inspection.batteryPowerLow],
-    ["Handle Lock On", inspection.handleLockOn],
-    ["Remote Button Enabled", inspection.remoteButtonEnabled],
-    ["Gas Level Low", inspection.gasLevelLow]
-  ];
-  
-  const tableRows2 = [
-    ["Earthing Arrangement Adequate", inspection.earthingArrangementAdequate],
-    ["No Fuses Blown", inspection.noFusesBlown],
-    ["No Damage to Bushings", inspection.noDamageToBushings],
-    ["No Damage to HV Connections", inspection.noDamageToHVConnections],
-    ["Insulators Clean", inspection.insulatorsClean],
-    ["Paintwork Adequate", inspection.paintworkAdequate],
-    ["PT Fuse Link Intact", inspection.ptFuseLinkIntact],
-    ["No Corrosion", inspection.noCorrosion],
-    ["Silica Gel Condition", inspection.silicaGelCondition],
-    ["Correct Labelling", inspection.correctLabelling]
-  ];
-
-  // Left table
-  doc.autoTable({
-    head: [tableColumn1],
-    body: tableRows1,
-    startY: 110,
-    theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 3 },
-    columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 30 } },
-    headStyles: { fillColor: [50, 50, 50] },
-    margin: { left: 20 }
-  });
-
-  // Right table
-  doc.autoTable({
-    head: [tableColumn2],
-    body: tableRows2,
-    startY: 110,
-    theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 3 },
-    columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 30 } },
-    headStyles: { fillColor: [50, 50, 50] },
-    margin: { left: 120 }
-  });
-
-  let finalY = Math.max(
-    doc.lastAutoTable?.finalY || 0,
-    doc.lastAutoTable?.finalY || 0
-  );
-
-  // Add remarks if present
-  if (inspection.remarks) {
-    finalY += 10;
-    doc.setFontSize(11);
-    doc.text("Remarks:", 20, finalY);
-    
-    const splitRemarks = doc.splitTextToSize(inspection.remarks, 170);
-    doc.text(splitRemarks, 20, finalY + 7);
-    finalY += splitRemarks.length * 7 + 10;
-  }
-
-  // Add footer
-  doc.setFontSize(10);
-  doc.text(`Generated: ${format(new Date(), 'PPP')}`, 20, 285);
-  doc.text("Page 1 of 1", 180, 285);
-
-  // Save the PDF
-  const filename = `vit-inspection-report-${inspection.id}.pdf`;
-  doc.save(filename);
-  return filename;
-};
-
-/**
- * Generate PDF report for load monitoring data
- */
-export const exportLoadMonitoringToPDF = (loadData) => {
+export const exportLoadMonitoringToPDF = (data: LoadMonitoringData) => {
   const doc = new jsPDF();
   
-  // Header styling
-  doc.setFontSize(18);
-  doc.setTextColor(0, 0, 0);
-  doc.text("ELECTRICITY COMPANY OF GHANA", 105, 20, { align: "center" });
-  doc.setFontSize(16);
-  doc.text("TRANSFORMER LOAD MONITORING REPORT", 105, 30, { align: "center" });
-
-  // Horizontal line
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.line(20, 35, 190, 35);
-
-  // Basic information
+  // Set up document
+  doc.setFontSize(22);
+  doc.text('Transformer Load Monitoring Report', 105, 20, { align: 'center' });
+  
+  // Add ECG logo if available
+  // const logoUrl = '/lovable-uploads/ecg-logo.png';
+  // doc.addImage(logoUrl, 'PNG', 20, 10, 30, 30);
+  
+  // Basic Information
   doc.setFontSize(14);
-  doc.text("MONITORING INFORMATION", 20, 45);
+  doc.text('Basic Information', 20, 40);
+  doc.setLineWidth(0.5);
+  doc.line(20, 42, 190, 42);
   
   doc.setFontSize(11);
-  doc.text(`Date: ${loadData.date || "N/A"}`, 20, 55);
-  doc.text(`Time: ${loadData.time || "N/A"}`, 120, 55);
+  const formattedDate = format(new Date(data.date), 'PPP');
+  doc.text(`Date: ${formattedDate}`, 20, 50);
+  doc.text(`Time: ${data.time}`, 105, 50);
+  doc.text(`Region: ${data.region}`, 20, 58);
+  doc.text(`District: ${data.district}`, 105, 58);
+  doc.text(`Created By: ${data.createdBy || 'N/A'}`, 20, 66);
   
-  doc.text(`Region: ${loadData.region || "N/A"}`, 20, 62);
-  doc.text(`District: ${loadData.district || "N/A"}`, 120, 62);
-  
-  doc.text(`Substation Name: ${loadData.substationName || "N/A"}`, 20, 69);
-  doc.text(`Substation Number: ${loadData.substationNumber || "N/A"}`, 120, 69);
-  
-  doc.text(`Location: ${loadData.location || "N/A"}`, 20, 76);
-  doc.text(`Rating (Amps): ${loadData.rating || "N/A"}`, 120, 76);
-  
-  doc.text(`Peak Load Status: ${loadData.peakLoadStatus || "N/A"}`, 20, 83);
-
-  // Load metrics table
+  // Substation Information
   doc.setFontSize(14);
-  doc.text("LOAD METRICS", 20, 95);
+  doc.text('Substation Information', 20, 76);
+  doc.line(20, 78, 190, 78);
   
-  const metricsData = [
-    ["Rated Load", `${loadData.ratedLoad?.toFixed(2) || "N/A"} A`],
-    ["Red Phase Bulk Load", `${loadData.redPhaseBulkLoad?.toFixed(2) || "N/A"} A`],
-    ["Yellow Phase Bulk Load", `${loadData.yellowPhaseBulkLoad?.toFixed(2) || "N/A"} A`],
-    ["Blue Phase Bulk Load", `${loadData.bluePhaseBulkLoad?.toFixed(2) || "N/A"} A`],
-    ["Average Current", `${loadData.averageCurrent?.toFixed(2) || "N/A"} A`],
-    ["Percentage Load", `${loadData.percentageLoad?.toFixed(2) || "N/A"}%`],
-    ["10% Full Load Neutral", `${loadData.tenPercentFullLoadNeutral?.toFixed(2) || "N/A"} A`],
-    ["Calculated Neutral", `${loadData.calculatedNeutral?.toFixed(2) || "N/A"} A`]
-  ];
+  doc.setFontSize(11);
+  doc.text(`Substation Name: ${data.substationName}`, 20, 86);
+  doc.text(`Substation Number: ${data.substationNumber}`, 105, 86);
+  doc.text(`Location: ${data.location}`, 20, 94);
+  doc.text(`Rating: ${data.rating} A`, 105, 94);
+  doc.text(`Peak Load Status: ${data.peakLoadStatus}`, 20, 102);
   
-  doc.autoTable({
-    head: [["Metric", "Value"]],
-    body: metricsData,
-    startY: 100,
-    theme: 'grid',
-    styles: { fontSize: 10, cellPadding: 4 },
-    columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 40 } },
-    headStyles: { fillColor: [50, 50, 50] }
-  });
-
-  let finalY = doc.lastAutoTable?.finalY || 160;
-  finalY += 10;
-
-  // Feeder legs table
-  if (loadData.feederLegs && loadData.feederLegs.length > 0) {
-    doc.setFontSize(14);
-    doc.text("FEEDER LEGS", 20, finalY);
-    finalY += 5;
-    
-    const tableHeaders = ["Leg", "Red Phase (A)", "Yellow Phase (A)", "Blue Phase (A)", "Neutral (A)"];
-    const tableRows = loadData.feederLegs.map((leg, index) => [
-      `Leg ${index + 1}`,
-      leg.redPhaseCurrent?.toFixed(2) || "0.00",
-      leg.yellowPhaseCurrent?.toFixed(2) || "0.00",
-      leg.bluePhaseCurrent?.toFixed(2) || "0.00",
-      leg.neutralCurrent?.toFixed(2) || "0.00"
-    ]);
-    
-    doc.autoTable({
-      head: [tableHeaders],
-      body: tableRows,
-      startY: finalY,
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: [50, 50, 50] }
-    });
-    
-    finalY = doc.lastAutoTable?.finalY || finalY + 40;
-    finalY += 10;
+  // Load Summary
+  doc.setFontSize(14);
+  doc.text('Load Summary', 20, 112);
+  doc.line(20, 114, 190, 114);
+  
+  doc.setFontSize(11);
+  
+  // Calculate load class color
+  let loadColor = [0, 0.5, 0]; // Green
+  if (data.percentageLoad > 90) {
+    loadColor = [0.8, 0, 0]; // Red
+  } else if (data.percentageLoad > 75) {
+    loadColor = [0.8, 0.6, 0]; // Orange/Yellow
   }
-
-  // Add a load balance chart visualization (simplified for this version)
+  
+  // Draw percentage in circle
+  doc.setFillColor(...loadColor);
+  doc.circle(60, 132, 15, 'F');
+  doc.setTextColor(1, 1, 1);
   doc.setFontSize(14);
-  doc.text("PHASE BALANCE VISUALIZATION", 20, finalY);
-  finalY += 10;
-  
-  // Draw a simple bar chart for phase currents
-  const chartWidth = 150;
-  const maxCurrent = Math.max(
-    loadData.redPhaseBulkLoad || 0,
-    loadData.yellowPhaseBulkLoad || 0,
-    loadData.bluePhaseBulkLoad || 0
-  );
-  
-  // Red phase bar
-  const redWidth = loadData.redPhaseBulkLoad ? (loadData.redPhaseBulkLoad / maxCurrent) * chartWidth : 0;
-  doc.setFillColor(220, 0, 0);
-  doc.rect(30, finalY, redWidth, 10, 'F');
-  doc.text(`Red: ${loadData.redPhaseBulkLoad?.toFixed(2) || "0.00"} A`, 30 + redWidth + 5, finalY + 7);
-  
-  // Yellow phase bar
-  const yellowWidth = loadData.yellowPhaseBulkLoad ? (loadData.yellowPhaseBulkLoad / maxCurrent) * chartWidth : 0;
-  doc.setFillColor(220, 220, 0);
-  doc.rect(30, finalY + 15, yellowWidth, 10, 'F');
-  doc.text(`Yellow: ${loadData.yellowPhaseBulkLoad?.toFixed(2) || "0.00"} A`, 30 + yellowWidth + 5, finalY + 22);
-  
-  // Blue phase bar
-  const blueWidth = loadData.bluePhaseBulkLoad ? (loadData.bluePhaseBulkLoad / maxCurrent) * chartWidth : 0;
-  doc.setFillColor(0, 0, 220);
-  doc.rect(30, finalY + 30, blueWidth, 10, 'F');
-  doc.text(`Blue: ${loadData.bluePhaseBulkLoad?.toFixed(2) || "0.00"} A`, 30 + blueWidth + 5, finalY + 37);
-
-  // Add footer
+  doc.text(`${data.percentageLoad.toFixed(1)}%`, 60, 132, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
-  doc.text(`Generated: ${format(new Date(), 'PPP')}`, 20, 285);
-  doc.text("Page 1 of 1", 180, 285);
-
+  doc.text('Transformer Load', 60, 152, { align: 'center' });
+  
+  // Phase Information
+  doc.setFontSize(11);
+  doc.text('Red Phase:', 100, 124);
+  doc.text(`${data.redPhaseBulkLoad.toFixed(1)} A`, 150, 124);
+  
+  doc.text('Yellow Phase:', 100, 132);
+  doc.text(`${data.yellowPhaseBulkLoad.toFixed(1)} A`, 150, 132);
+  
+  doc.text('Blue Phase:', 100, 140);
+  doc.text(`${data.bluePhaseBulkLoad.toFixed(1)} A`, 150, 140);
+  
+  doc.text('Average Current:', 100, 148);
+  doc.text(`${data.averageCurrent.toFixed(2)} A`, 150, 148);
+  
+  doc.text('Calculated Neutral:', 100, 156);
+  doc.text(`${data.calculatedNeutral.toFixed(2)} A`, 150, 156);
+  
+  // Detailed Calculations
+  doc.setFontSize(14);
+  doc.text('Detailed Calculations', 20, 170);
+  doc.line(20, 172, 190, 172);
+  
+  doc.setFontSize(11);
+  doc.text('Rated Load:', 20, 180);
+  doc.text(`${data.ratedLoad.toFixed(2)} A`, 150, 180);
+  
+  doc.text('Percentage Load:', 20, 188);
+  doc.text(`${data.percentageLoad.toFixed(2)}%`, 150, 188);
+  
+  doc.text('10% Full Load on Neutral:', 20, 196);
+  doc.text(`${data.tenPercentFullLoadNeutral.toFixed(2)} A`, 150, 196);
+  
+  // Load Assessment
+  let loadStatus = "Normal";
+  if (data.percentageLoad > 90) {
+    loadStatus = "Critical";
+  } else if (data.percentageLoad > 75) {
+    loadStatus = "Warning";
+  }
+  
+  doc.text('Load Status Assessment:', 20, 204);
+  doc.text(loadStatus, 150, 204);
+  
+  // Feeder Legs
+  if (data.feederLegs && data.feederLegs.length > 0) {
+    // Check if we need a new page
+    if (doc.internal.getCurrentPageInfo().pageNumber === 1 && 
+        data.feederLegs.length > 2) {
+      doc.addPage();
+      
+      // Add header to new page
+      doc.setFontSize(14);
+      doc.text('Feeder Legs Information', 20, 20);
+      doc.line(20, 22, 190, 22);
+      
+      let yPos = 30;
+      
+      // Create a table for feeder legs
+      const tableData = data.feederLegs.map((leg, index) => [
+        `Leg ${index + 1}`,
+        leg.redPhaseCurrent.toFixed(2),
+        leg.yellowPhaseCurrent.toFixed(2),
+        leg.bluePhaseCurrent.toFixed(2),
+        leg.neutralCurrent.toFixed(2)
+      ]);
+      
+      doc.autoTable({
+        startY: yPos,
+        head: [['', 'Red Phase (A)', 'Yellow Phase (A)', 'Blue Phase (A)', 'Neutral (A)']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [0, 51, 102],
+          textColor: [255, 255, 255]
+        },
+        styles: { fontSize: 10 },
+        margin: { top: 30 }
+      });
+    } else {
+      // Add feeder legs on the same page
+      doc.setFontSize(14);
+      doc.text('Feeder Legs Information', 20, 214);
+      doc.line(20, 216, 190, 216);
+      
+      // Create a table for feeder legs
+      const tableData = data.feederLegs.map((leg, index) => [
+        `Leg ${index + 1}`,
+        leg.redPhaseCurrent.toFixed(2),
+        leg.yellowPhaseCurrent.toFixed(2),
+        leg.bluePhaseCurrent.toFixed(2),
+        leg.neutralCurrent.toFixed(2)
+      ]);
+      
+      doc.autoTable({
+        startY: 224,
+        head: [['', 'Red Phase (A)', 'Yellow Phase (A)', 'Blue Phase (A)', 'Neutral (A)']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [0, 51, 102],
+          textColor: [255, 255, 255]
+        },
+        styles: { fontSize: 10 },
+        margin: { top: 224 }
+      });
+    }
+  }
+  
+  // Add footer with date and page numbers
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.text(
+      `Report generated on ${new Date().toLocaleString()} | Page ${i} of ${pageCount}`,
+      105,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: 'center' }
+    );
+  }
+  
   // Save the PDF
-  const filename = `load-monitoring-report-${loadData.substationNumber || new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(filename);
-  return filename;
+  doc.save(`load-monitoring-${data.substationNumber}-${format(new Date(data.date), 'yyyy-MM-dd')}.pdf`);
 };

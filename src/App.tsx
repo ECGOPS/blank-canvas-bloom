@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter as Router,
   Route,
@@ -7,11 +8,8 @@ import {
 import { AuthProvider } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
-import ProfilePage from "./pages/ProfilePage";
 import SubstationInspectionPage from "./pages/asset-management/SubstationInspectionPage";
 import InspectionDetailsPage from "./pages/asset-management/InspectionDetailsPage";
 import InspectionManagementPage from "./pages/asset-management/InspectionManagementPage";
@@ -31,12 +29,9 @@ function App() {
         <DataProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+            <Route path="/signup" element={<SignupPage />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
 
             {/* Asset Management Routes */}
             <Route path="/asset-management/substation-inspection" element={<SubstationInspectionPage />} />
