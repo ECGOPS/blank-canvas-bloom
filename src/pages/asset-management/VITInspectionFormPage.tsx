@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -68,12 +69,12 @@ export default function VITInspectionFormPage() {
         
         <div className="bg-white rounded-lg border shadow-sm p-6">
           <VITInspectionForm
-            assetId={assetId}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
+            assetId={assetId || ""}
+            onFormSubmit={handleSubmit}
+            onFormCancel={handleCancel}
           />
         </div>
       </div>
     </Layout>
   );
-} 
+}

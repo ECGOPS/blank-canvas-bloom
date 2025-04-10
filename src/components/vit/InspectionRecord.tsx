@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useData } from '@/contexts/DataContext';
 import { VITInspectionChecklist } from '@/lib/types';
@@ -9,7 +10,7 @@ import { exportVITInspectionToCsv, exportVITAssetToPDF } from '@/utils/pdfExport
 import { Download, Edit, Trash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
-import { YesNoStatus } from './YesNoStatus';
+import { YesNoStatus } from '@/components/vit/YesNoStatus';
 
 interface InspectionRecordProps {
   inspection: VITInspectionChecklist;

@@ -80,9 +80,9 @@ export default function EditVITInspectionPage() {
         <div className="bg-white rounded-lg border shadow-sm p-6">
           <VITInspectionForm
             assetId={inspection.vitAssetId}
-            inspectionData={inspection}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
+            existingInspection={inspection}
+            onFormSubmit={handleSubmit}
+            onFormCancel={handleCancel}
           />
         </div>
       </div>

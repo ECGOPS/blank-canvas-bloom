@@ -1,511 +1,343 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { v4 as uuidv4 } from 'uuid';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/sonner';
-import { VITInspectionChecklist, VITAsset, YesNoOption } from '@/lib/types';
 
-interface VITInspectionFormProps {
+import React, { useState, useEffect } from 'react';
+import { useData } from '@/contexts/DataContext';
+import { v4 as uuidv4 } from 'uuid';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { YesNoOption, VITInspectionChecklist } from '@/lib/types';
+import { toast } from '@/components/ui/sonner';
+
+// Define the props for the VITInspectionForm
+export interface VITInspectionFormProps {
   assetId: string;
+  existingInspection?: VITInspectionChecklist;
+  onFormSubmit: () => void;
+  onFormCancel: () => void;
 }
 
-export function VITInspectionForm({ assetId }: VITInspectionFormProps) {
-  const navigate = useNavigate();
-  const { vitAssets, addVITInspection } = useData();
-  const { user } = useAuth();
+// Define the available options for Yes/No fields
+const optionChoices: YesNoOption[] = ['Yes', 'No', 'N/A'];
 
-  // Get the VIT asset details
-  const asset = vitAssets.find(a => a.id === assetId);
+// Define the available options for silica gel condition
+const silicaGelOptions = ['Normal', 'Changed', 'Discolored', 'N/A'];
+
+// Helper function to create a select field for Yes/No/NA options
+const YesNoSelectField = ({ 
+  label, value, onChange 
+}: { 
+  label: string; 
+  value: YesNoOption; 
+  onChange: (value: YesNoOption) => void; 
+}) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mb-4">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="md:col-span-2">
+        <Select value={value} onValueChange={(val) => onChange(val as YesNoOption)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent>
+            {optionChoices.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+};
+
+export function VITInspectionForm({ 
+  assetId,
+  existingInspection,
+  onFormSubmit,
+  onFormCancel
+}: VITInspectionFormProps) {
+  const { addVITInspection, updateVITInspection } = useData();
   
-  // Initialize form state
-  const [formState, setFormState] = useState({
-    inspectionDate: new Date().toISOString().split('T')[0],
-    inspectedBy: user?.name || '',
-    rodentTermiteEncroachment: 'No' as YesNoOption,
-    cleanDustFree: 'Yes' as YesNoOption,
-    protectionButtonEnabled: 'Yes' as YesNoOption,
-    recloserButtonEnabled: 'Yes' as YesNoOption,
-    groundEarthButtonEnabled: 'Yes' as YesNoOption,
-    acPowerOn: 'Yes' as YesNoOption,
-    batteryPowerLow: 'No' as YesNoOption,
-    handleLockOn: 'Yes' as YesNoOption,
-    remoteButtonEnabled: 'Yes' as YesNoOption,
-    gasLevelLow: 'No' as YesNoOption,
-    earthingArrangementAdequate: 'Yes' as YesNoOption,
-    noFusesBlown: 'Yes' as YesNoOption,
-    noDamageToBushings: 'Yes' as YesNoOption,
-    noDamageToHVConnections: 'Yes' as YesNoOption,
-    insulatorsClean: 'Yes' as YesNoOption,
-    paintworkAdequate: 'Yes' as YesNoOption,
-    ptFuseLinkIntact: 'Yes' as YesNoOption,
-    noCorrosion: 'Yes' as YesNoOption,
-    silicaGelCondition: 'Normal' as 'Normal' | 'Changed' | 'Discolored' | 'N/A',
-    correctLabelling: 'Yes' as YesNoOption,
-    remarks: '',
+  // Initialize form state with existing inspection data or defaults
+  const [formData, setFormData] = useState<Omit<VITInspectionChecklist, 'id'> & { id?: string }>({
+    id: existingInspection?.id,
+    vitAssetId: assetId,
+    inspectionDate: existingInspection?.inspectionDate || new Date().toISOString().split('T')[0],
+    inspectedBy: existingInspection?.inspectedBy || '',
+    rodentTermiteEncroachment: existingInspection?.rodentTermiteEncroachment || 'N/A',
+    cleanDustFree: existingInspection?.cleanDustFree || 'N/A',
+    protectionButtonEnabled: existingInspection?.protectionButtonEnabled || 'N/A',
+    recloserButtonEnabled: existingInspection?.recloserButtonEnabled || 'N/A',
+    groundEarthButtonEnabled: existingInspection?.groundEarthButtonEnabled || 'N/A',
+    acPowerOn: existingInspection?.acPowerOn || 'N/A',
+    batteryPowerLow: existingInspection?.batteryPowerLow || 'N/A',
+    handleLockOn: existingInspection?.handleLockOn || 'N/A',
+    remoteButtonEnabled: existingInspection?.remoteButtonEnabled || 'N/A',
+    gasLevelLow: existingInspection?.gasLevelLow || 'N/A',
+    earthingArrangementAdequate: existingInspection?.earthingArrangementAdequate || 'N/A',
+    noFusesBlown: existingInspection?.noFusesBlown || 'N/A',
+    noDamageToBushings: existingInspection?.noDamageToBushings || 'N/A',
+    noDamageToHVConnections: existingInspection?.noDamageToHVConnections || 'N/A',
+    insulatorsClean: existingInspection?.insulatorsClean || 'N/A',
+    paintworkAdequate: existingInspection?.paintworkAdequate || 'N/A',
+    ptFuseLinkIntact: existingInspection?.ptFuseLinkIntact || 'N/A',
+    noCorrosion: existingInspection?.noCorrosion || 'N/A',
+    silicaGelCondition: existingInspection?.silicaGelCondition || 'Normal',
+    correctLabelling: existingInspection?.correctLabelling || 'N/A',
+    remarks: existingInspection?.remarks || '',
+    createdAt: existingInspection?.createdAt || new Date().toISOString(),
   });
   
-  // Handle input change
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormState(prevState => ({
-      ...prevState,
-      [id]: value
-    }));
+  // Update a single field in the form data
+  const updateField = <K extends keyof typeof formData>(field: K, value: typeof formData[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
   
-  // Handle select change
-  const handleSelectChange = (id: string, value: string) => {
-    setFormState(prevState => ({
-      ...prevState,
-      [id]: value
-    }));
-  };
-  
+  // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!asset) {
-      toast.error("Asset not found!");
+    // Add validation here if needed
+    if (!formData.inspectedBy) {
+      toast.error("Please enter the inspector's name");
       return;
     }
     
-    try {
-      // Create the inspection with all required fields including id
-      const inspection: VITInspectionChecklist = {
-        id: uuidv4(), // Generate unique ID
-        vitAssetId: assetId,
-        inspectionDate: formState.inspectionDate,
-        inspectedBy: formState.inspectedBy,
-        rodentTermiteEncroachment: formState.rodentTermiteEncroachment,
-        cleanDustFree: formState.cleanDustFree,
-        protectionButtonEnabled: formState.protectionButtonEnabled,
-        recloserButtonEnabled: formState.recloserButtonEnabled,
-        groundEarthButtonEnabled: formState.groundEarthButtonEnabled,
-        acPowerOn: formState.acPowerOn,
-        batteryPowerLow: formState.batteryPowerLow,
-        handleLockOn: formState.handleLockOn,
-        remoteButtonEnabled: formState.remoteButtonEnabled,
-        gasLevelLow: formState.gasLevelLow,
-        earthingArrangementAdequate: formState.earthingArrangementAdequate,
-        noFusesBlown: formState.noFusesBlown,
-        noDamageToBushings: formState.noDamageToBushings,
-        noDamageToHVConnections: formState.noDamageToHVConnections,
-        insulatorsClean: formState.insulatorsClean,
-        paintworkAdequate: formState.paintworkAdequate,
-        ptFuseLinkIntact: formState.ptFuseLinkIntact,
-        noCorrosion: formState.noCorrosion,
-        silicaGelCondition: formState.silicaGelCondition,
-        correctLabelling: formState.correctLabelling,
-        remarks: formState.remarks,
-        createdBy: user?.name || 'Unknown',
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add the inspection to the data context
-      addVITInspection(inspection);
-      
-      toast.success("VIT Inspection added successfully!");
-      navigate(`/asset-management/vit-inspection-details/${inspection.id}`);
-    } catch (error) {
-      console.error("Error submitting the inspection:", error);
-      toast.error("Failed to add inspection");
+    if (existingInspection) {
+      // Update existing inspection
+      updateVITInspection({
+        ...formData,
+        id: existingInspection.id
+      } as VITInspectionChecklist);
+    } else {
+      // Create new inspection
+      addVITInspection({
+        ...formData,
+        id: uuidv4(),
+      } as VITInspectionChecklist);
     }
+    
+    // Notify parent component of submission
+    onFormSubmit();
   };
   
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid gap-4">
-        {/* Inspection Date */}
-        <div>
-          <Label htmlFor="inspectionDate">Inspection Date</Label>
-          <Input
-            type="date"
-            id="inspectionDate"
-            value={formState.inspectionDate}
-            onChange={handleChange}
-            required
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-sm font-medium" htmlFor="inspectionDate">
+              Inspection Date
+            </label>
+            <Input
+              id="inspectionDate"
+              type="date"
+              value={formData.inspectionDate}
+              onChange={(e) => updateField('inspectionDate', e.target.value)}
+              className="mt-1"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium" htmlFor="inspectedBy">
+              Inspected By
+            </label>
+            <Input
+              id="inspectedBy"
+              type="text"
+              value={formData.inspectedBy}
+              onChange={(e) => updateField('inspectedBy', e.target.value)}
+              className="mt-1"
+              required
+            />
+          </div>
+        </div>
+        
+        <Separator />
+        
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">Safety & External Condition</h3>
+          
+          <YesNoSelectField
+            label="Rodent/Termite Encroachment"
+            value={formData.rodentTermiteEncroachment}
+            onChange={(value) => updateField('rodentTermiteEncroachment', value)}
+          />
+          
+          <YesNoSelectField
+            label="Clean/Dust Free"
+            value={formData.cleanDustFree}
+            onChange={(value) => updateField('cleanDustFree', value)}
           />
         </div>
         
-        {/* Inspected By */}
-        <div>
-          <Label htmlFor="inspectedBy">Inspected By</Label>
-          <Input
-            type="text"
-            id="inspectedBy"
-            value={formState.inspectedBy}
-            onChange={handleChange}
-            required
+        <Separator />
+        
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">Control & Protection</h3>
+          
+          <YesNoSelectField
+            label="Protection Button Enabled"
+            value={formData.protectionButtonEnabled}
+            onChange={(value) => updateField('protectionButtonEnabled', value)}
+          />
+          
+          <YesNoSelectField
+            label="Recloser Button Enabled"
+            value={formData.recloserButtonEnabled}
+            onChange={(value) => updateField('recloserButtonEnabled', value)}
+          />
+          
+          <YesNoSelectField
+            label="Ground/Earth Button Enabled"
+            value={formData.groundEarthButtonEnabled}
+            onChange={(value) => updateField('groundEarthButtonEnabled', value)}
+          />
+          
+          <YesNoSelectField
+            label="Remote Button Enabled"
+            value={formData.remoteButtonEnabled}
+            onChange={(value) => updateField('remoteButtonEnabled', value)}
           />
         </div>
         
-        {/* Rodent/Termite Encroachment */}
-        <div>
-          <Label htmlFor="rodentTermiteEncroachment">Rodent/Termite Encroachment</Label>
-          <Select
-            value={formState.rodentTermiteEncroachment}
-            onValueChange={(value) => handleSelectChange("rodentTermiteEncroachment", value)}
-          >
-            <SelectTrigger id="rodentTermiteEncroachment">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
+        <Separator />
+        
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">Power & Operation</h3>
+          
+          <YesNoSelectField
+            label="AC Power On"
+            value={formData.acPowerOn}
+            onChange={(value) => updateField('acPowerOn', value)}
+          />
+          
+          <YesNoSelectField
+            label="Battery Power Low"
+            value={formData.batteryPowerLow}
+            onChange={(value) => updateField('batteryPowerLow', value)}
+          />
+          
+          <YesNoSelectField
+            label="Handle Lock On"
+            value={formData.handleLockOn}
+            onChange={(value) => updateField('handleLockOn', value)}
+          />
+          
+          <YesNoSelectField
+            label="Gas Level Low"
+            value={formData.gasLevelLow}
+            onChange={(value) => updateField('gasLevelLow', value)}
+          />
         </div>
         
-        {/* Clean/Dust Free */}
-        <div>
-          <Label htmlFor="cleanDustFree">Clean/Dust Free</Label>
-          <Select
-            value={formState.cleanDustFree}
-            onValueChange={(value) => handleSelectChange("cleanDustFree", value)}
-          >
-            <SelectTrigger id="cleanDustFree">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
+        <Separator />
+        
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">Electrical & Structural Integrity</h3>
+          
+          <YesNoSelectField
+            label="Earthing Arrangement Adequate"
+            value={formData.earthingArrangementAdequate}
+            onChange={(value) => updateField('earthingArrangementAdequate', value)}
+          />
+          
+          <YesNoSelectField
+            label="No Fuses Blown"
+            value={formData.noFusesBlown}
+            onChange={(value) => updateField('noFusesBlown', value)}
+          />
+          
+          <YesNoSelectField
+            label="No Damage to Bushings"
+            value={formData.noDamageToBushings}
+            onChange={(value) => updateField('noDamageToBushings', value)}
+          />
+          
+          <YesNoSelectField
+            label="No Damage to HV Connections"
+            value={formData.noDamageToHVConnections}
+            onChange={(value) => updateField('noDamageToHVConnections', value)}
+          />
+          
+          <YesNoSelectField
+            label="Insulators Clean"
+            value={formData.insulatorsClean}
+            onChange={(value) => updateField('insulatorsClean', value)}
+          />
+          
+          <YesNoSelectField
+            label="Paintwork Adequate"
+            value={formData.paintworkAdequate}
+            onChange={(value) => updateField('paintworkAdequate', value)}
+          />
+          
+          <YesNoSelectField
+            label="PT Fuse Link Intact"
+            value={formData.ptFuseLinkIntact}
+            onChange={(value) => updateField('ptFuseLinkIntact', value)}
+          />
+          
+          <YesNoSelectField
+            label="No Corrosion"
+            value={formData.noCorrosion}
+            onChange={(value) => updateField('noCorrosion', value)}
+          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mb-4">
+            <label className="text-sm font-medium">Silica Gel Condition</label>
+            <div className="md:col-span-2">
+              <Select 
+                value={formData.silicaGelCondition} 
+                onValueChange={(val) => updateField('silicaGelCondition', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {silicaGelOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <YesNoSelectField
+            label="Correct Labelling"
+            value={formData.correctLabelling}
+            onChange={(value) => updateField('correctLabelling', value)}
+          />
         </div>
         
-        {/* Protection Button Enabled */}
-        <div>
-          <Label htmlFor="protectionButtonEnabled">Protection Button Enabled</Label>
-          <Select
-            value={formState.protectionButtonEnabled}
-            onValueChange={(value) => handleSelectChange("protectionButtonEnabled", value)}
-          >
-            <SelectTrigger id="protectionButtonEnabled">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Separator />
         
-        {/* Recloser Button Enabled */}
         <div>
-          <Label htmlFor="recloserButtonEnabled">Recloser Button Enabled</Label>
-          <Select
-            value={formState.recloserButtonEnabled}
-            onValueChange={(value) => handleSelectChange("recloserButtonEnabled", value)}
-          >
-            <SelectTrigger id="recloserButtonEnabled">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Ground/Earth Button Enabled */}
-        <div>
-          <Label htmlFor="groundEarthButtonEnabled">Ground/Earth Button Enabled</Label>
-          <Select
-            value={formState.groundEarthButtonEnabled}
-            onValueChange={(value) => handleSelectChange("groundEarthButtonEnabled", value)}
-          >
-            <SelectTrigger id="groundEarthButtonEnabled">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* AC Power On */}
-        <div>
-          <Label htmlFor="acPowerOn">AC Power On</Label>
-          <Select
-            value={formState.acPowerOn}
-            onValueChange={(value) => handleSelectChange("acPowerOn", value)}
-          >
-            <SelectTrigger id="acPowerOn">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Battery Power Low */}
-        <div>
-          <Label htmlFor="batteryPowerLow">Battery Power Low</Label>
-          <Select
-            value={formState.batteryPowerLow}
-            onValueChange={(value) => handleSelectChange("batteryPowerLow", value)}
-          >
-            <SelectTrigger id="batteryPowerLow">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Handle Lock On */}
-        <div>
-          <Label htmlFor="handleLockOn">Handle Lock On</Label>
-          <Select
-            value={formState.handleLockOn}
-            onValueChange={(value) => handleSelectChange("handleLockOn", value)}
-          >
-            <SelectTrigger id="handleLockOn">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Remote Button Enabled */}
-        <div>
-          <Label htmlFor="remoteButtonEnabled">Remote Button Enabled</Label>
-          <Select
-            value={formState.remoteButtonEnabled}
-            onValueChange={(value) => handleSelectChange("remoteButtonEnabled", value)}
-          >
-            <SelectTrigger id="remoteButtonEnabled">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Gas Level Low */}
-        <div>
-          <Label htmlFor="gasLevelLow">Gas Level Low</Label>
-          <Select
-            value={formState.gasLevelLow}
-            onValueChange={(value) => handleSelectChange("gasLevelLow", value)}
-          >
-            <SelectTrigger id="gasLevelLow">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Earthing Arrangement Adequate */}
-        <div>
-          <Label htmlFor="earthingArrangementAdequate">Earthing Arrangement Adequate</Label>
-          <Select
-            value={formState.earthingArrangementAdequate}
-            onValueChange={(value) => handleSelectChange("earthingArrangementAdequate", value)}
-          >
-            <SelectTrigger id="earthingArrangementAdequate">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* No Fuses Blown */}
-        <div>
-          <Label htmlFor="noFusesBlown">No Fuses Blown</Label>
-          <Select
-            value={formState.noFusesBlown}
-            onValueChange={(value) => handleSelectChange("noFusesBlown", value)}
-          >
-            <SelectTrigger id="noFusesBlown">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* No Damage to Bushings */}
-        <div>
-          <Label htmlFor="noDamageToBushings">No Damage to Bushings</Label>
-          <Select
-            value={formState.noDamageToBushings}
-            onValueChange={(value) => handleSelectChange("noDamageToBushings", value)}
-          >
-            <SelectTrigger id="noDamageToBushings">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* No Damage to HV Connections */}
-        <div>
-          <Label htmlFor="noDamageToHVConnections">No Damage to HV Connections</Label>
-          <Select
-            value={formState.noDamageToHVConnections}
-            onValueChange={(value) => handleSelectChange("noDamageToHVConnections", value)}
-          >
-            <SelectTrigger id="noDamageToHVConnections">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Insulators Clean */}
-        <div>
-          <Label htmlFor="insulatorsClean">Insulators Clean</Label>
-          <Select
-            value={formState.insulatorsClean}
-            onValueChange={(value) => handleSelectChange("insulatorsClean", value)}
-          >
-            <SelectTrigger id="insulatorsClean">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Paintwork Adequate */}
-        <div>
-          <Label htmlFor="paintworkAdequate">Paintwork Adequate</Label>
-          <Select
-            value={formState.paintworkAdequate}
-            onValueChange={(value) => handleSelectChange("paintworkAdequate", value)}
-          >
-            <SelectTrigger id="paintworkAdequate">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* PT Fuse Link Intact */}
-        <div>
-          <Label htmlFor="ptFuseLinkIntact">PT Fuse Link Intact</Label>
-          <Select
-            value={formState.ptFuseLinkIntact}
-            onValueChange={(value) => handleSelectChange("ptFuseLinkIntact", value)}
-          >
-            <SelectTrigger id="ptFuseLinkIntact">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* No Corrosion */}
-        <div>
-          <Label htmlFor="noCorrosion">No Corrosion</Label>
-          <Select
-            value={formState.noCorrosion}
-            onValueChange={(value) => handleSelectChange("noCorrosion", value)}
-          >
-            <SelectTrigger id="noCorrosion">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Silica Gel Condition */}
-        <div>
-          <Label htmlFor="silicaGelCondition">Silica Gel Condition</Label>
-          <Select
-            value={formState.silicaGelCondition}
-            onValueChange={(value) => handleSelectChange("silicaGelCondition", value)}
-          >
-            <SelectTrigger id="silicaGelCondition">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Normal">Normal</SelectItem>
-              <SelectItem value="Changed">Changed</SelectItem>
-              <SelectItem value="Discolored">Discolored</SelectItem>
-              <SelectItem value="N/A">N/A</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Correct Labelling */}
-        <div>
-          <Label htmlFor="correctLabelling">Correct Labelling</Label>
-          <Select
-            value={formState.correctLabelling}
-            onValueChange={(value) => handleSelectChange("correctLabelling", value)}
-          >
-            <SelectTrigger id="correctLabelling">
-              <SelectValue placeholder="Select an option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Yes">Yes</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Remarks */}
-        <div>
-          <Label htmlFor="remarks">Remarks</Label>
+          <label className="text-sm font-medium" htmlFor="remarks">
+            Remarks / Additional Observations
+          </label>
           <Textarea
             id="remarks"
-            placeholder="Enter any remarks"
-            value={formState.remarks}
-            onChange={handleChange}
+            value={formData.remarks}
+            onChange={(e) => updateField('remarks', e.target.value)}
+            className="mt-1"
+            rows={4}
           />
         </div>
         
-        {/* Submit Button */}
-        <Button type="submit">Submit Inspection</Button>
+        <div className="flex justify-end space-x-4">
+          <Button type="button" variant="outline" onClick={onFormCancel}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {existingInspection ? 'Update Inspection' : 'Submit Inspection'}
+          </Button>
+        </div>
       </div>
     </form>
   );

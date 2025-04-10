@@ -1,4 +1,3 @@
-
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { VITAsset, VITInspectionChecklist, SubstationInspection } from "@/lib/types";
 import { LoadMonitoringData } from "@/lib/asset-types";
@@ -31,6 +30,9 @@ declare module "jspdf" {
     };
   }
 }
+
+// Using forward declaration to avoid the "used before declaration" error
+export { exportVITAssetToCsv, exportVITInspectionToCsv, exportVITAssetToPDF };
 
 /**
  * Export a single VIT asset to CSV format
