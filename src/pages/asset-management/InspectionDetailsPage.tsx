@@ -49,6 +49,19 @@ export default function InspectionDetailsPage() {
     return category ? category.items : [];
   };
 
+  // Safely count statuses
+  const countGoodItems = () => {
+    return inspection.items.flatMap(category => 
+      category.items || []
+    ).filter(item => item && item.status === "good").length;
+  };
+  
+  const countBadItems = () => {
+    return inspection.items.flatMap(category => 
+      category.items || []
+    ).filter(item => item && item.status === "bad").length;
+  };
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
@@ -120,10 +133,10 @@ export default function InspectionDetailsPage() {
                 <p className="text-sm font-medium text-muted-foreground">Status Summary</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {inspection.items.flatMap(category => category.items || []).filter(item => item && item.status === "good").length} good
+                    {countGoodItems()} good
                   </span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {inspection.items.flatMap(category => category.items || []).filter(item => item && item.status === "bad").length} bad
+                    {countBadItems()} bad
                   </span>
                 </div>
               </div>

@@ -1,368 +1,346 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import mockRegionsData from "@/data/regions.json";
-import mockDistrictsData from "@/data/districts.json";
-import mockOP5FaultsData from "@/data/op5-faults.json";
-import mockControlSystemOutagesData from "@/data/control-system-outages.json";
-import mockVITAssetsData from "@/data/vit-assets.json";
-import mockVITInspectionsData from "@/data/vit-inspections.json";
-import { v4 as uuidv4 } from "uuid";
-import { toast } from "@/components/ui/sonner";
+
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import regions from '../data/regions.json';
+import districts from '../data/districts.json';
+import vitAssets from '../data/vit-assets.json';
+import vitInspections from '../data/vit-inspections.json';
+import op5Faults from '../data/op5-faults.json';
+import controlSystemOutages from '../data/control-system-outages.json';
+import { useAuth } from './AuthContext';
+import { toast } from '@/components/ui/sonner';
+import { v4 as uuidv4 } from 'uuid';
 import {
-  Region,
-  District,
-  OP5Fault,
-  ControlSystemOutage,
-  DataContextType,
-  VITAsset,
-  VITInspectionChecklist,
-  VoltageLevel,
-  VITStatus,
-  YesNoOption,
-  GoodBadOption,
-  SubstationInspection,
-  FaultType,
-  InspectionItem
-} from "@/lib/types";
+  Region, District, VITAsset, VITInspectionChecklist, SubstationInspection,
+  InspectionItem, FaultType, OP5Fault, ControlSystemOutage
+} from '@/lib/types';
+import { LoadMonitoringData } from '@/lib/asset-types';
+
+interface DistrictPopulation {
+  districtId: string;
+  rural: number;
+  urban: number;
+  metro: number;
+}
+
+interface DataContextType {
+  regions: Region[];
+  districts: District[];
+  vitAssets: VITAsset[];
+  vitInspections: VITInspectionChecklist[];
+  savedInspections: SubstationInspection[];
+  loadMonitoringRecords: LoadMonitoringData[];
+  op5Faults: OP5Fault[];
+  controlSystemOutages: ControlSystemOutage[];
+  districtPopulations: DistrictPopulation[];
+  getDistrictsByRegionId: (regionId: string) => District[];
+  saveVITAsset: (asset: VITAsset) => void;
+  updateVITAsset: (assetId: string, asset: Partial<VITAsset>) => void;
+  deleteVITAsset: (assetId: string) => void;
+  saveVITInspection: (inspection: VITInspectionChecklist) => void;
+  updateVITInspection: (inspectionId: string, inspection: Partial<VITInspectionChecklist>) => void;
+  deleteVITInspection: (inspectionId: string) => void;
+  saveInspection: (inspection: SubstationInspection) => void;
+  getSavedInspection: (id: string) => SubstationInspection | null;
+  updateInspection: (id: string, inspection: Partial<SubstationInspection>) => void;
+  deleteInspection: (id: string) => void;
+  saveOP5Fault: (fault: Omit<OP5Fault, 'id' | 'status'>) => void;
+  saveControlSystemOutage: (outage: Omit<ControlSystemOutage, 'id' | 'status'>) => void;
+  saveDistrictPopulation: (population: DistrictPopulation) => void;
+  getAssetById: (id: string) => VITAsset | undefined;
+  saveLoadMonitoringRecord: (record: LoadMonitoringData) => void;
+  updateLoadMonitoringRecord: (id: string, record: Partial<LoadMonitoringData>) => void;
+  deleteLoadMonitoringRecord: (id: string) => void;
+  getLoadMonitoringRecordById: (id: string) => LoadMonitoringData | null;
+}
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-export function DataProvider({ children }: { children: React.ReactNode }) {
+export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [op5Faults, setOP5Faults] = useState<OP5Fault[]>([]);
-  const [controlOutages, setControlOutages] = useState<ControlSystemOutage[]>([]);
-  const [vitAssets, setVITAssets] = useState<VITAsset[]>(() => {
-    const saved = localStorage.getItem('vitAssets');
-    return saved ? JSON.parse(saved) : mockVITAssetsData.map(asset => ({
-      ...asset,
-      voltageLevel: asset.voltageLevel as VoltageLevel,
-      status: asset.status as VITStatus
-    }));
-  });
-  const [vitInspections, setVITInspections] = useState<VITInspectionChecklist[]>(() => {
-    const saved = localStorage.getItem('vitInspections');
-    return saved ? JSON.parse(saved) : mockVITInspectionsData.map(inspection => ({
-      ...inspection,
-      rodentTermiteEncroachment: inspection.rodentTermiteEncroachment as YesNoOption,
-      cleanDustFree: inspection.cleanDustFree as YesNoOption,
-      protectionButtonEnabled: inspection.protectionButtonEnabled as YesNoOption,
-      recloserButtonEnabled: inspection.recloserButtonEnabled as YesNoOption,
-      groundEarthButtonEnabled: inspection.groundEarthButtonEnabled as YesNoOption,
-      acPowerOn: inspection.acPowerOn as YesNoOption,
-      batteryPowerLow: inspection.batteryPowerLow as YesNoOption,
-      handleLockOn: inspection.handleLockOn as YesNoOption,
-      remoteButtonEnabled: inspection.remoteButtonEnabled as YesNoOption,
-      gasLevelLow: inspection.gasLevelLow as YesNoOption,
-      earthingArrangementAdequate: inspection.earthingArrangementAdequate as YesNoOption,
-      noFusesBlown: inspection.noFusesBlown as YesNoOption,
-      noDamageToBushings: inspection.noDamageToBushings as YesNoOption,
-      noDamageToHVConnections: inspection.noDamageToHVConnections as YesNoOption,
-      insulatorsClean: inspection.insulatorsClean as YesNoOption,
-      paintworkAdequate: inspection.paintworkAdequate as YesNoOption,
-      ptFuseLinkIntact: inspection.ptFuseLinkIntact as YesNoOption,
-      noCorrosion: inspection.noCorrosion as YesNoOption,
-      silicaGelCondition: inspection.silicaGelCondition as GoodBadOption,
-      correctLabelling: inspection.correctLabelling as YesNoOption
-    }));
-  });
-  const [savedInspections, setSavedInspections] = useState<SubstationInspection[]>(() => {
-    const saved = localStorage.getItem('savedInspections');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // Save data to localStorage whenever it changes
+  
+  // Base Data
+  const [regionsData] = useState<Region[]>(regions);
+  const [districtsData] = useState<District[]>(districts);
+  
+  // VIT Data
+  const [vitAssetsData, setVitAssetsData] = useState<VITAsset[]>(vitAssets);
+  const [vitInspectionsData, setVitInspectionsData] = useState<VITInspectionChecklist[]>(vitInspections);
+  
+  // Substation Inspection Data
+  const [savedInspectionsData, setSavedInspectionsData] = useState<SubstationInspection[]>([]);
+  
+  // Load Monitoring Data
+  const [loadMonitoringData, setLoadMonitoringData] = useState<LoadMonitoringData[]>([]);
+  
+  // Faults Data
+  const [op5FaultsData, setOp5FaultsData] = useState<OP5Fault[]>(op5Faults);
+  const [controlSystemOutagesData, setControlSystemOutagesData] = useState<ControlSystemOutage[]>(controlSystemOutages);
+  
+  // District Population Data
+  const [districtPopulationsData, setDistrictPopulationsData] = useState<DistrictPopulation[]>([]);
+  
+  // Load data from localStorage on initial load
   useEffect(() => {
-    localStorage.setItem('savedInspections', JSON.stringify(savedInspections));
-  }, [savedInspections]);
-
-  useEffect(() => {
-    localStorage.setItem('vitAssets', JSON.stringify(vitAssets));
-  }, [vitAssets]);
-
-  useEffect(() => {
-    localStorage.setItem('vitInspections', JSON.stringify(vitInspections));
-  }, [vitInspections]);
-
-  // Initialize data from mock JSON
-  useEffect(() => {
-    // Load regions and link districts
-    const loadedRegions: Region[] = mockRegionsData.map(region => ({
-      ...region,
-      districts: [],
-    }));
-
-    // Load districts and link to regions
-    const loadedDistricts: District[] = mockDistrictsData;
-
-    // Associate districts with regions
-    loadedRegions.forEach(region => {
-      region.districts = loadedDistricts.filter(district => district.regionId === region.id);
-    });
-
-    setRegions(loadedRegions);
-    setDistricts(loadedDistricts);
+    const loadStoredData = () => {
+      try {
+        // Load VIT assets
+        const storedVitAssets = localStorage.getItem('vitAssets');
+        if (storedVitAssets) {
+          setVitAssetsData(JSON.parse(storedVitAssets));
+        }
+        
+        // Load VIT inspections
+        const storedVitInspections = localStorage.getItem('vitInspections');
+        if (storedVitInspections) {
+          setVitInspectionsData(JSON.parse(storedVitInspections));
+        }
+        
+        // Load saved inspections
+        const storedInspections = localStorage.getItem('savedInspections');
+        if (storedInspections) {
+          setSavedInspectionsData(JSON.parse(storedInspections));
+        }
+        
+        // Load OP5 faults
+        const storedOP5Faults = localStorage.getItem('op5Faults');
+        if (storedOP5Faults) {
+          setOp5FaultsData(JSON.parse(storedOP5Faults));
+        }
+        
+        // Load control system outages
+        const storedOutages = localStorage.getItem('controlSystemOutages');
+        if (storedOutages) {
+          setControlSystemOutagesData(JSON.parse(storedOutages));
+        }
+        
+        // Load district populations
+        const storedPopulations = localStorage.getItem('districtPopulations');
+        if (storedPopulations) {
+          setDistrictPopulationsData(JSON.parse(storedPopulations));
+        }
+        
+        // Load load monitoring records
+        const storedLoadMonitoring = localStorage.getItem('loadMonitoringRecords');
+        if (storedLoadMonitoring) {
+          setLoadMonitoringData(JSON.parse(storedLoadMonitoring));
+        }
+      } catch (error) {
+        console.error('Error loading stored data:', error);
+        toast.error('Error loading data from storage');
+      }
+    };
     
-    // Load fault data with proper type casting
-    setOP5Faults(mockOP5FaultsData.map(fault => ({
-      ...fault,
-      faultType: fault.faultType as FaultType,
-      status: fault.status as "active" | "resolved",
-      createdBy: "System",
-      createdAt: new Date().toISOString()
-    })));
-    
-    setControlOutages(mockControlSystemOutagesData.map(outage => ({
-      ...outage,
-      faultType: outage.faultType as FaultType,
-      status: outage.status as "active" | "resolved",
-      createdBy: "System",
-      createdAt: new Date().toISOString()
-    })));
+    loadStoredData();
   }, []);
-
-  // Function to determine if user can edit a fault
-  const canEditFault = (fault: OP5Fault | ControlSystemOutage): boolean => {
-    if (!user) return false;
-
-    // Global engineers can edit any fault
-    if (user.role === "global_engineer") return true;
-
-    // Regional engineers can only edit faults in their region
-    if (user.role === "regional_engineer") {
-      if (!user.region) return false;
-      const faultRegion = regions.find(r => r.id === fault.regionId);
-      return faultRegion?.name === user.region;
-    }
-
-    // District engineers can only edit faults in their district
-    if (user.role === "district_engineer") {
-      if (!user.district) return false;
-      const faultDistrict = districts.find(d => d.id === fault.districtId);
-      return faultDistrict?.name === user.district;
-    }
-
-    return false;
-  };
   
-  // Function to get filtered faults
-  const getFilteredFaults = (regionId?: string, districtId?: string) => {
-    let filteredOP5 = op5Faults;
-    let filteredControl = controlOutages;
-    
-    if (regionId) {
-      filteredOP5 = filteredOP5.filter(fault => fault.regionId === regionId);
-      filteredControl = filteredControl.filter(outage => outage.regionId === regionId);
-    }
-    
-    if (districtId) {
-      filteredOP5 = filteredOP5.filter(fault => fault.districtId === districtId);
-      filteredControl = filteredControl.filter(outage => outage.districtId === districtId);
-    }
-    
-    return { op5Faults: filteredOP5, controlOutages: filteredControl };
-  };
+  // Update localStorage when data changes
+  useEffect(() => {
+    localStorage.setItem('vitAssets', JSON.stringify(vitAssetsData));
+  }, [vitAssetsData]);
   
-  // CRUD functions for OP5 faults
-  const addOP5Fault = (fault: Omit<OP5Fault, "id" | "status">) => {
+  useEffect(() => {
+    localStorage.setItem('vitInspections', JSON.stringify(vitInspectionsData));
+  }, [vitInspectionsData]);
+  
+  useEffect(() => {
+    localStorage.setItem('savedInspections', JSON.stringify(savedInspectionsData));
+  }, [savedInspectionsData]);
+  
+  useEffect(() => {
+    localStorage.setItem('op5Faults', JSON.stringify(op5FaultsData));
+  }, [op5FaultsData]);
+  
+  useEffect(() => {
+    localStorage.setItem('controlSystemOutages', JSON.stringify(controlSystemOutagesData));
+  }, [controlSystemOutagesData]);
+  
+  useEffect(() => {
+    localStorage.setItem('districtPopulations', JSON.stringify(districtPopulationsData));
+  }, [districtPopulationsData]);
+  
+  useEffect(() => {
+    localStorage.setItem('loadMonitoringRecords', JSON.stringify(loadMonitoringData));
+  }, [loadMonitoringData]);
+  
+  const getDistrictsByRegionId = useCallback((regionId: string) => {
+    return districtsData.filter(district => district.regionId === regionId);
+  }, [districtsData]);
+  
+  // VIT Asset Methods
+  const saveVITAsset = useCallback((asset: VITAsset) => {
+    setVitAssetsData(prev => [...prev, asset]);
+  }, []);
+  
+  const updateVITAsset = useCallback((assetId: string, updatedAsset: Partial<VITAsset>) => {
+    setVitAssetsData(prev => 
+      prev.map(asset => 
+        asset.id === assetId 
+          ? { ...asset, ...updatedAsset, updatedAt: new Date().toISOString() } 
+          : asset
+      )
+    );
+  }, []);
+  
+  const deleteVITAsset = useCallback((assetId: string) => {
+    setVitAssetsData(prev => prev.filter(asset => asset.id !== assetId));
+  }, []);
+  
+  const getAssetById = useCallback((id: string) => {
+    return vitAssetsData.find(asset => asset.id === id);
+  }, [vitAssetsData]);
+  
+  // VIT Inspection Methods
+  const saveVITInspection = useCallback((inspection: VITInspectionChecklist) => {
+    setVitInspectionsData(prev => [...prev, inspection]);
+  }, []);
+  
+  const updateVITInspection = useCallback((inspectionId: string, updatedInspection: Partial<VITInspectionChecklist>) => {
+    setVitInspectionsData(prev => 
+      prev.map(inspection => 
+        inspection.id === inspectionId 
+          ? { ...inspection, ...updatedInspection } 
+          : inspection
+      )
+    );
+  }, []);
+  
+  const deleteVITInspection = useCallback((inspectionId: string) => {
+    setVitInspectionsData(prev => prev.filter(inspection => inspection.id !== inspectionId));
+  }, []);
+  
+  // Substation Inspection Methods
+  const saveInspection = useCallback((inspection: SubstationInspection) => {
+    setSavedInspectionsData(prev => [...prev, inspection]);
+  }, []);
+  
+  const getSavedInspection = useCallback((id: string) => {
+    const inspection = savedInspectionsData.find(insp => insp.id === id);
+    return inspection || null;
+  }, [savedInspectionsData]);
+  
+  const updateInspection = useCallback((id: string, updatedInspection: Partial<SubstationInspection>) => {
+    setSavedInspectionsData(prev => 
+      prev.map(inspection => 
+        inspection.id === id 
+          ? { ...inspection, ...updatedInspection } 
+          : inspection
+      )
+    );
+  }, []);
+  
+  const deleteInspection = useCallback((id: string) => {
+    setSavedInspectionsData(prev => prev.filter(inspection => inspection.id !== id));
+  }, []);
+  
+  // Load Monitoring Methods
+  const saveLoadMonitoringRecord = useCallback((record: LoadMonitoringData) => {
+    setLoadMonitoringData(prev => [...prev, record]);
+  }, []);
+  
+  const updateLoadMonitoringRecord = useCallback((id: string, updatedRecord: Partial<LoadMonitoringData>) => {
+    setLoadMonitoringData(prev => 
+      prev.map(record => 
+        record.id === id 
+          ? { ...record, ...updatedRecord } 
+          : record
+      )
+    );
+  }, []);
+  
+  const deleteLoadMonitoringRecord = useCallback((id: string) => {
+    setLoadMonitoringData(prev => prev.filter(record => record.id !== id));
+  }, []);
+  
+  const getLoadMonitoringRecordById = useCallback((id: string) => {
+    const record = loadMonitoringData.find(rec => rec.id === id);
+    return record || null;
+  }, [loadMonitoringData]);
+  
+  // Fault Reporting Methods
+  const saveOP5Fault = useCallback((fault: Omit<OP5Fault, 'id' | 'status'>) => {
     const newFault: OP5Fault = {
+      id: uuidv4(),
       ...fault,
-      id: uuidv4(),
-      status: "active",
+      status: 'pending',
+      createdBy: user?.name || 'Anonymous',
+      createdAt: new Date().toISOString()
     };
     
-    setOP5Faults(prev => [...prev, newFault]);
-    toast.success("OP5 Fault report submitted successfully");
-  };
-
-  // CRUD functions for Control System Outages
-  const addControlOutage = (outage: Omit<ControlSystemOutage, "id" | "status">) => {
+    setOp5FaultsData(prev => [...prev, newFault]);
+  }, [user]);
+  
+  const saveControlSystemOutage = useCallback((outage: Omit<ControlSystemOutage, 'id' | 'status'>) => {
     const newOutage: ControlSystemOutage = {
+      id: uuidv4(),
       ...outage,
-      id: uuidv4(),
-      status: "active",
+      status: 'pending',
+      createdBy: user?.name || 'Anonymous',
+      createdAt: new Date().toISOString()
     };
     
-    setControlOutages(prev => [...prev, newOutage]);
-    toast.success("Control System Outage report submitted successfully");
-  };
-
-  // Function to resolve a fault (shared for both types)
-  const resolveFault = (id: string, type: "op5" | "control") => {
-    const currentDate = new Date().toISOString();
+    setControlSystemOutagesData(prev => [...prev, newOutage]);
+  }, [user]);
+  
+  // District Population Methods
+  const saveDistrictPopulation = useCallback((population: DistrictPopulation) => {
+    // First, check if there's already population data for this district
+    const existingIndex = districtPopulationsData.findIndex(p => p.districtId === population.districtId);
     
-    if (type === "op5") {
-      setOP5Faults(prev =>
-        prev.map(fault =>
-          fault.id === id
-            ? { ...fault, status: "resolved", restorationDate: currentDate }
-            : fault
-        )
-      );
+    if (existingIndex >= 0) {
+      // Update existing population data
+      setDistrictPopulationsData(prev => {
+        const updatedPopulations = [...prev];
+        updatedPopulations[existingIndex] = population;
+        return updatedPopulations;
+      });
     } else {
-      setControlOutages(prev =>
-        prev.map(outage =>
-          outage.id === id
-            ? { ...outage, status: "resolved", restorationDate: currentDate }
-            : outage
-        )
-      );
+      // Add new population data
+      setDistrictPopulationsData(prev => [...prev, population]);
     }
-  };
-
-  // Function to delete a fault
-  const deleteFault = (id: string, type: "op5" | "control") => {
-    if (type === "op5") {
-      setOP5Faults(prev => prev.filter(fault => fault.id !== id));
-    } else {
-      setControlOutages(prev => prev.filter(outage => outage.id !== id));
-    }
-  };
+  }, [districtPopulationsData]);
   
-  // CRUD functions for VIT assets
-  const addVITAsset = (asset: Omit<VITAsset, "id" | "createdAt" | "updatedAt">) => {
-    const now = new Date().toISOString();
-    const newAsset: VITAsset = {
-      ...asset,
-      id: uuidv4(),
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    setVITAssets(prev => [...prev, newAsset]);
-    toast.success("VIT Asset added successfully");
-  };
-  
-  const updateVITAsset = (id: string, asset: Partial<VITAsset>) => {
-    setVITAssets(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, ...asset, updatedAt: new Date().toISOString() } 
-          : item
-      )
-    );
-    toast.success("VIT Asset updated successfully");
-  };
-  
-  const deleteVITAsset = (id: string) => {
-    // Delete the asset
-    setVITAssets(prev => prev.filter(asset => asset.id !== id));
-    
-    // Delete associated inspections
-    setVITInspections(prev => prev.filter(inspection => inspection.vitAssetId !== id));
-    toast.success("VIT Asset deleted successfully");
-  };
-  
-  // CRUD functions for VIT inspections
-  const addVITInspection = (inspection: Omit<VITInspectionChecklist, "id">) => {
-    const newInspection: VITInspectionChecklist = {
-      ...inspection,
-      id: uuidv4(),
-    };
-    
-    setVITInspections(prev => [...prev, newInspection]);
-    toast.success("VIT Inspection added successfully");
-  };
-  
-  const updateVITInspection = (id: string, inspection: Partial<VITInspectionChecklist>) => {
-    setVITInspections(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, ...inspection } 
-          : item
-      )
-    );
-    toast.success("VIT Inspection updated successfully");
-  };
-  
-  const deleteVITInspection = (id: string) => {
-    setVITInspections(prev => prev.filter(inspection => inspection.id !== id));
-    toast.success("VIT Inspection deleted successfully");
-  };
-
-  // Update district function
-  const updateDistrict = (id: string, updates: Partial<District>) => {
-    setDistricts(prev => 
-      prev.map(district => 
-        district.id === id
-          ? { ...district, ...updates }
-          : district
-      )
-    );
-    toast.success("District information updated successfully");
-  };
-
-  // Functions for substation inspections
-  const saveInspection = (data: Omit<SubstationInspection, "id">) => {
-    const newInspection: SubstationInspection = {
-      ...data,
-      id: uuidv4()
-    };
-    
-    setSavedInspections(prev => [...prev, newInspection]);
-    toast.success("Inspection saved successfully");
-    return newInspection.id;
-  };
-
-  const getSavedInspection = (id: string) => {
-    return savedInspections.find(inspection => inspection.id === id);
-  };
-
-  const updateInspection = (id: string, data: Partial<SubstationInspection>) => {
-    setSavedInspections(prev => 
-      prev.map(item => 
-        item.id === id
-          ? { ...item, ...data }
-          : item
-      )
-    );
-    toast.success("Inspection updated successfully");
-  };
-
-  const deleteInspection = (id: string) => {
-    setSavedInspections(prev => prev.filter(item => item.id !== id));
-    toast.success("Inspection deleted successfully");
+  const value = {
+    regions: regionsData,
+    districts: districtsData,
+    vitAssets: vitAssetsData,
+    vitInspections: vitInspectionsData,
+    savedInspections: savedInspectionsData,
+    loadMonitoringRecords: loadMonitoringData,
+    op5Faults: op5FaultsData,
+    controlSystemOutages: controlSystemOutagesData,
+    districtPopulations: districtPopulationsData,
+    getDistrictsByRegionId,
+    saveVITAsset,
+    updateVITAsset,
+    deleteVITAsset,
+    saveVITInspection,
+    updateVITInspection,
+    deleteVITInspection,
+    saveInspection,
+    getSavedInspection,
+    updateInspection,
+    deleteInspection,
+    saveOP5Fault,
+    saveControlSystemOutage,
+    saveDistrictPopulation,
+    getAssetById,
+    saveLoadMonitoringRecord,
+    updateLoadMonitoringRecord,
+    deleteLoadMonitoringRecord,
+    getLoadMonitoringRecordById
   };
   
   return (
-    <DataContext.Provider
-      value={{
-        regions,
-        districts,
-        op5Faults,
-        controlOutages,
-        vitAssets,
-        vitInspections,
-        savedInspections,
-        addOP5Fault,
-        addControlOutage,
-        resolveFault,
-        deleteFault,
-        canEditFault,
-        getFilteredFaults,
-        addVITAsset,
-        updateVITAsset,
-        deleteVITAsset,
-        addVITInspection,
-        updateVITInspection,
-        deleteVITInspection,
-        updateDistrict,
-        saveInspection,
-        getSavedInspection,
-        updateInspection,
-        deleteInspection
-      }}
-    >
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
-}
+};
 
-export function useData() {
+export const useData = () => {
   const context = useContext(DataContext);
   if (context === undefined) {
-    throw new Error("useData must be used within a DataProvider");
+    throw new Error('useData must be used within a DataProvider');
   }
   return context;
-}
+};

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,19 +14,26 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { AlertCircle, PlusCircle, Trash2 } from "lucide-react";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
 import { FeederLeg, LoadMonitoringData } from "@/lib/asset-types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useNavigate } from "react-router-dom";
+import { formatDate } from "@/utils/calculations";
 
 export default function LoadMonitoringPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { regions, districts, getDistrictsByRegionId, saveLoadMonitoringRecord } = useData();
+  
   const [formData, setFormData] = useState<Partial<LoadMonitoringData>>({
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().slice(0, 5),
-    region: user?.region || "",
-    district: user?.district || "",
+    regionId: user?.regionId || "",
+    districtId: user?.districtId || "",
     peakLoadStatus: "day",
     feederLegs: [
       {
@@ -37,6 +45,34 @@ export default function LoadMonitoringPage() {
       }
     ]
   });
+  
+  const [availableDistricts, setAvailableDistricts] = useState(districts);
+  
+  // Update available districts when region changes
+  useEffect(() => {
+    if (formData.regionId) {
+      setAvailableDistricts(getDistrictsByRegionId(formData.regionId));
+    } else {
+      setAvailableDistricts(districts);
+    }
+  }, [formData.regionId, districts, getDistrictsByRegionId]);
+  
+  // Update region and district names for display
+  useEffect(() => {
+    if (formData.regionId) {
+      const region = regions.find(r => r.id === formData.regionId);
+      if (region) {
+        setFormData(prev => ({ ...prev, region: region.name }));
+      }
+    }
+    
+    if (formData.districtId) {
+      const district = districts.find(d => d.id === formData.districtId);
+      if (district) {
+        setFormData(prev => ({ ...prev, district: district.name }));
+      }
+    }
+  }, [formData.regionId, formData.districtId, regions, districts]);
 
   // Add a new feeder leg
   const addFeederLeg = () => {
@@ -153,9 +189,16 @@ export default function LoadMonitoringPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.regionId || !formData.districtId || !formData.date || !formData.substationNumber || !formData.rating) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    
     // Combine form data with calculated values
     const completeData: LoadMonitoringData = {
-      ...(formData as Required<LoadMonitoringData>),
+      id: uuidv4(),
+      ...(formData as LoadMonitoringData),
       ratedLoad: loadInfo.ratedLoad,
       redPhaseBulkLoad: loadInfo.redPhaseBulkLoad,
       yellowPhaseBulkLoad: loadInfo.yellowPhaseBulkLoad,
@@ -163,41 +206,39 @@ export default function LoadMonitoringPage() {
       averageCurrent: loadInfo.averageCurrent,
       percentageLoad: loadInfo.percentageLoad,
       tenPercentFullLoadNeutral: loadInfo.tenPercentFullLoadNeutral,
-      calculatedNeutral: loadInfo.calculatedNeutral
+      calculatedNeutral: loadInfo.calculatedNeutral,
+      createdBy: user?.name || "Anonymous",
+      createdAt: new Date().toISOString()
     };
     
-    // Log the data (would typically be sent to an API)
-    console.log("Form submitted:", completeData);
+    // Save the data
+    saveLoadMonitoringRecord(completeData);
     
     toast.success("Load monitoring data submitted successfully");
     
-    // Reset form (except region/district which should stay the same for the user)
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().slice(0, 5),
-      region: user?.region || "",
-      district: user?.district || "",
-      peakLoadStatus: "day",
-      feederLegs: [
-        {
-          id: uuidv4(),
-          redPhaseCurrent: 0,
-          yellowPhaseCurrent: 0,
-          bluePhaseCurrent: 0,
-          neutralCurrent: 0
-        }
-      ]
-    });
+    // Navigate to the details page
+    navigate(`/asset-management/load-monitoring-details/${completeData.id}`);
   };
 
   return (
     <Layout>
       <div className="container mx-auto py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Transformer Load Monitoring</h1>
-          <p className="text-muted-foreground mt-2">
-            Record and analyze transformer load metrics to ensure optimal performance
-          </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Transformer Load Monitoring</h1>
+              <p className="text-muted-foreground mt-2">
+                Record and analyze transformer load metrics to ensure optimal performance
+              </p>
+            </div>
+            
+            <Button 
+              variant="outline"
+              onClick={() => navigate("/asset-management/load-monitoring-management")}
+            >
+              View All Records
+            </Button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -234,23 +275,39 @@ export default function LoadMonitoringPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="region">Region</Label>
-                    <Input
-                      id="region"
-                      type="text"
-                      value={formData.region}
-                      onChange={(e) => handleInputChange('region', e.target.value)}
-                      required
-                    />
+                    <Select
+                      value={formData.regionId}
+                      onValueChange={(value) => handleInputChange('regionId', value)}
+                    >
+                      <SelectTrigger id="region">
+                        <SelectValue placeholder="Select region" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {regions.map((region) => (
+                          <SelectItem key={region.id} value={region.id}>
+                            {region.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="district">District</Label>
-                    <Input
-                      id="district"
-                      type="text"
-                      value={formData.district}
-                      onChange={(e) => handleInputChange('district', e.target.value)}
-                      required
-                    />
+                    <Select
+                      value={formData.districtId}
+                      onValueChange={(value) => handleInputChange('districtId', value)}
+                    >
+                      <SelectTrigger id="district">
+                        <SelectValue placeholder="Select district" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableDistricts.map((district) => (
+                          <SelectItem key={district.id} value={district.id}>
+                            {district.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardContent>
@@ -331,7 +388,7 @@ export default function LoadMonitoringPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Feeder Information</CardTitle>
+                  <CardTitle>Feeder Information (Optional)</CardTitle>
                   <CardDescription>
                     Record current readings for each feeder leg
                   </CardDescription>
@@ -348,6 +405,13 @@ export default function LoadMonitoringPage() {
                 </Button>
               </CardHeader>
               <CardContent>
+                <Alert className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Feeder information is optional. If you don't have feeder details, you can still submit the form with the basic transformer data.
+                  </AlertDescription>
+                </Alert>
+                
                 <Tabs defaultValue="legs" className="w-full">
                   <TabsList className="mb-4">
                     <TabsTrigger value="legs">
@@ -379,7 +443,6 @@ export default function LoadMonitoringPage() {
                               step="0.01"
                               value={leg.redPhaseCurrent || ''}
                               onChange={(e) => updateFeederLeg(leg.id, 'redPhaseCurrent', Number(e.target.value))}
-                              required
                             />
                           </div>
                           <div className="space-y-2">
@@ -391,7 +454,6 @@ export default function LoadMonitoringPage() {
                               step="0.01"
                               value={leg.yellowPhaseCurrent || ''}
                               onChange={(e) => updateFeederLeg(leg.id, 'yellowPhaseCurrent', Number(e.target.value))}
-                              required
                             />
                           </div>
                           <div className="space-y-2">
@@ -403,7 +465,6 @@ export default function LoadMonitoringPage() {
                               step="0.01"
                               value={leg.bluePhaseCurrent || ''}
                               onChange={(e) => updateFeederLeg(leg.id, 'bluePhaseCurrent', Number(e.target.value))}
-                              required
                             />
                           </div>
                           <div className="space-y-2">
@@ -415,7 +476,6 @@ export default function LoadMonitoringPage() {
                               step="0.01"
                               value={leg.neutralCurrent || ''}
                               onChange={(e) => updateFeederLeg(leg.id, 'neutralCurrent', Number(e.target.value))}
-                              required
                             />
                           </div>
                         </div>
