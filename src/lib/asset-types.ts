@@ -40,22 +40,15 @@ export type ConditionStatus = 'good' | 'bad';
 export type YesNoStatus = 'yes' | 'no';
 export type GoodBadStatus = 'good' | 'bad';
 
-export interface InspectionCategory {
-  id: string;
-  category: string;
-  description?: string;
-  items: InspectionItem[];
-}
-
 export interface SubstationInspectionData {
   id: string;
   region: string;
   district: string;
   date: string;
   substationNo: string;
-  substationName: string;
+  substationName?: string;
   type: 'indoor' | 'outdoor';
-  items: InspectionCategory[];
+  items: InspectionItem[];
   createdAt: string;
   createdBy: string;
 }
@@ -93,9 +86,9 @@ export type SubstationInspection = {
   district: string;
   date: string;
   substationNo: string;
-  substationName: string;
+  substationName?: string;
   type: 'indoor' | 'outdoor';
-  items: InspectionCategory[];
+  items: InspectionItem[];
   createdBy: string;
   createdAt: string;
 };
