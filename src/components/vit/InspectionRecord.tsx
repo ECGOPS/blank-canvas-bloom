@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useData } from '@/contexts/DataContext';
-import { VITInspectionChecklist } from '@/lib/types';
+import { VITInspectionChecklist, VITAsset } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';

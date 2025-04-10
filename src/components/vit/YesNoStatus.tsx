@@ -14,7 +14,7 @@ export function YesNoStatus({ label, status }: YesNoStatusProps) {
     switch (status) {
       case 'Yes':
         return (
-          <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-200">
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
             <Check className="mr-1 h-3 w-3" />
             Yes
           </Badge>

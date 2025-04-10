@@ -1,3 +1,4 @@
+
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { VITAsset, VITInspectionChecklist, SubstationInspection } from "@/lib/types";
 import { LoadMonitoringData } from "@/lib/asset-types";
@@ -31,9 +32,6 @@ declare module "jspdf" {
   }
 }
 
-// Using forward declaration to avoid the "used before declaration" error
-export { exportVITAssetToCsv, exportVITInspectionToCsv, exportVITAssetToPDF };
-
 /**
  * Export a single VIT asset to CSV format
  */
@@ -61,10 +59,6 @@ export const exportVITInspectionToCsv = (inspection: VITInspectionChecklist) => 
   link.download = `vit-inspection-${inspection.id}.csv`;
   link.click();
 };
-
-// Alias for backward compatibility
-export const exportInspectionToCsv = exportVITInspectionToCsv;
-export const exportInspectionToPDF = exportVITAssetToPDF;
 
 /**
  * Generate PDF report for VIT asset
@@ -167,6 +161,10 @@ export const exportVITAssetToPDF = async (asset: VITAsset, inspections: VITInspe
   link.click();
 };
 
+// Provide aliases for backward compatibility, but do not export them
+const exportInspectionToCsv = exportVITInspectionToCsv;
+const exportInspectionToPDF = exportVITAssetToPDF;
+
 /**
  * Generate comprehensive PDF report for Substation inspection
  */
@@ -221,22 +219,22 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
 
       if (item.remarks) {
         const remarksLines = doc.splitTextToSize(`  Remarks: ${item.remarks}`, 160);
-        remarksLines.forEach((line) => {
+        for (let i = 0; i < remarksLines.length; i++) {
           startY = checkPageOverflow(startY, 10);
-          doc.text(line, 30, startY);
+          doc.text(remarksLines[i], 30, startY);
           startY += 6;
-        });
+        }
       }
     });
     startY += 4;
   });
 
   // Add Footer
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
-    doc.text(`Page ${i} of ${pageCount}`, 20, doc.internal.pageSize.getHeight() - 10);
+    doc.text(`Page ${i} of ${totalPages}`, 20, doc.internal.pageSize.getHeight() - 10);
   }
 
   // Save the PDF
@@ -410,8 +408,7 @@ export const exportLoadMonitoringToPDF = (data: LoadMonitoringData) => {
   // Feeder Legs
   if (data.feederLegs && data.feederLegs.length > 0) {
     // Check if we need a new page
-    if (doc.internal.getCurrentPageInfo().pageNumber === 1 && 
-        data.feederLegs.length > 2) {
+    if (doc.getPage() === 1 && data.feederLegs.length > 2) {
       doc.addPage();
       
       // Add header to new page
@@ -473,12 +470,12 @@ export const exportLoadMonitoringToPDF = (data: LoadMonitoringData) => {
   }
   
   // Add footer with date and page numbers
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.text(
-      `Report generated on ${new Date().toLocaleString()} | Page ${i} of ${pageCount}`,
+      `Report generated on ${new Date().toLocaleString()} | Page ${i} of ${totalPages}`,
       105,
       doc.internal.pageSize.getHeight() - 10,
       { align: 'center' }

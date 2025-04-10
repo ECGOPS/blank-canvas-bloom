@@ -1,344 +1,380 @@
 
-import React, { useState, useEffect } from 'react';
-import { useData } from '@/contexts/DataContext';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
-import { Input } from '@/components/ui/input';
+import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { YesNoOption, VITInspectionChecklist } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
+import { VITInspectionChecklist, YesNoOption, GoodBadOption } from '@/lib/types';
 
-// Define the props for the VITInspectionForm
 export interface VITInspectionFormProps {
   assetId: string;
-  existingInspection?: VITInspectionChecklist;
+  inspectionData?: VITInspectionChecklist;
   onFormSubmit: () => void;
   onFormCancel: () => void;
 }
 
-// Define the available options for Yes/No fields
-const optionChoices: YesNoOption[] = ['Yes', 'No', 'N/A'];
+export function VITInspectionForm({ assetId, inspectionData, onFormSubmit, onFormCancel }: VITInspectionFormProps) {
+  const { addVITInspection, updateVITInspection, user } = useData();
+  const isEditMode = !!inspectionData;
 
-// Define the available options for silica gel condition
-const silicaGelOptions = ['Normal', 'Changed', 'Discolored', 'N/A'];
+  // Default empty form values
+  const defaultValues = {
+    inspectionDate: new Date().toISOString().split('T')[0],
+    inspectedBy: user?.name || '',
+    rodentTermiteEncroachment: 'No' as YesNoOption,
+    cleanDustFree: 'Yes' as YesNoOption,
+    protectionButtonEnabled: 'Yes' as YesNoOption,
+    recloserButtonEnabled: 'Yes' as YesNoOption,
+    groundEarthButtonEnabled: 'Yes' as YesNoOption,
+    acPowerOn: 'Yes' as YesNoOption,
+    batteryPowerLow: 'No' as YesNoOption,
+    handleLockOn: 'Yes' as YesNoOption,
+    remoteButtonEnabled: 'Yes' as YesNoOption,
+    gasLevelLow: 'No' as YesNoOption,
+    earthingArrangementAdequate: 'Yes' as YesNoOption,
+    noFusesBlown: 'Yes' as YesNoOption,
+    noDamageToBushings: 'Yes' as YesNoOption,
+    noDamageToHVConnections: 'Yes' as YesNoOption,
+    insulatorsClean: 'Yes' as YesNoOption,
+    paintworkAdequate: 'Yes' as YesNoOption,
+    ptFuseLinkIntact: 'Yes' as YesNoOption,
+    noCorrosion: 'Yes' as YesNoOption,
+    silicaGelCondition: 'Good' as GoodBadOption,
+    correctLabelling: 'Yes' as YesNoOption,
+    remarks: '',
+  };
 
-// Helper function to create a select field for Yes/No/NA options
-const YesNoSelectField = ({ 
-  label, value, onChange 
-}: { 
-  label: string; 
-  value: YesNoOption; 
-  onChange: (value: YesNoOption) => void; 
-}) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mb-4">
-      <label className="text-sm font-medium">{label}</label>
-      <div className="md:col-span-2">
-        <Select value={value} onValueChange={(val) => onChange(val as YesNoOption)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent>
-            {optionChoices.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  );
-};
+  // If in edit mode, use the inspection data as form values
+  const formValues = isEditMode
+    ? { ...inspectionData, inspectionDate: new Date(inspectionData.inspectionDate).toISOString().split('T')[0] }
+    : { ...defaultValues, vitAssetId: assetId };
 
-export function VITInspectionForm({ 
-  assetId,
-  existingInspection,
-  onFormSubmit,
-  onFormCancel
-}: VITInspectionFormProps) {
-  const { addVITInspection, updateVITInspection } = useData();
-  
-  // Initialize form state with existing inspection data or defaults
-  const [formData, setFormData] = useState<Omit<VITInspectionChecklist, 'id'> & { id?: string }>({
-    id: existingInspection?.id,
-    vitAssetId: assetId,
-    inspectionDate: existingInspection?.inspectionDate || new Date().toISOString().split('T')[0],
-    inspectedBy: existingInspection?.inspectedBy || '',
-    rodentTermiteEncroachment: existingInspection?.rodentTermiteEncroachment || 'N/A',
-    cleanDustFree: existingInspection?.cleanDustFree || 'N/A',
-    protectionButtonEnabled: existingInspection?.protectionButtonEnabled || 'N/A',
-    recloserButtonEnabled: existingInspection?.recloserButtonEnabled || 'N/A',
-    groundEarthButtonEnabled: existingInspection?.groundEarthButtonEnabled || 'N/A',
-    acPowerOn: existingInspection?.acPowerOn || 'N/A',
-    batteryPowerLow: existingInspection?.batteryPowerLow || 'N/A',
-    handleLockOn: existingInspection?.handleLockOn || 'N/A',
-    remoteButtonEnabled: existingInspection?.remoteButtonEnabled || 'N/A',
-    gasLevelLow: existingInspection?.gasLevelLow || 'N/A',
-    earthingArrangementAdequate: existingInspection?.earthingArrangementAdequate || 'N/A',
-    noFusesBlown: existingInspection?.noFusesBlown || 'N/A',
-    noDamageToBushings: existingInspection?.noDamageToBushings || 'N/A',
-    noDamageToHVConnections: existingInspection?.noDamageToHVConnections || 'N/A',
-    insulatorsClean: existingInspection?.insulatorsClean || 'N/A',
-    paintworkAdequate: existingInspection?.paintworkAdequate || 'N/A',
-    ptFuseLinkIntact: existingInspection?.ptFuseLinkIntact || 'N/A',
-    noCorrosion: existingInspection?.noCorrosion || 'N/A',
-    silicaGelCondition: existingInspection?.silicaGelCondition || 'Normal',
-    correctLabelling: existingInspection?.correctLabelling || 'N/A',
-    remarks: existingInspection?.remarks || '',
-    createdAt: existingInspection?.createdAt || new Date().toISOString(),
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: formValues
   });
-  
-  // Update a single field in the form data
-  const updateField = <K extends keyof typeof formData>(field: K, value: typeof formData[K]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-  
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Add validation here if needed
-    if (!formData.inspectedBy) {
-      toast.error("Please enter the inspector's name");
-      return;
+
+  const onSubmit = (data: any) => {
+    try {
+      if (isEditMode && inspectionData) {
+        // Update existing inspection
+        const updatedInspection: VITInspectionChecklist = {
+          ...inspectionData,
+          ...data,
+          updatedAt: new Date().toISOString()
+        };
+        updateVITInspection(updatedInspection);
+        toast.success("Inspection updated successfully");
+      } else {
+        // Create new inspection
+        const newInspection: VITInspectionChecklist = {
+          id: uuidv4(),
+          vitAssetId: assetId,
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        addVITInspection(newInspection);
+        toast.success("Inspection created successfully");
+      }
+      
+      onFormSubmit();
+    } catch (error) {
+      console.error("Error saving inspection:", error);
+      toast.error("Error saving inspection. Please try again.");
     }
-    
-    if (existingInspection) {
-      // Update existing inspection
-      updateVITInspection({
-        ...formData,
-        id: existingInspection.id
-      } as VITInspectionChecklist);
-    } else {
-      // Create new inspection
-      addVITInspection({
-        ...formData,
-        id: uuidv4(),
-      } as VITInspectionChecklist);
-    }
-    
-    // Notify parent component of submission
-    onFormSubmit();
   };
-  
+
+  const yesNoOptions = [
+    { value: "Yes", label: "Yes" },
+    { value: "No", label: "No" },
+    { value: "N/A", label: "N/A" }
+  ];
+
+  const silicaGelOptions = [
+    { value: "good", label: "Good" },
+    { value: "bad", label: "Bad" },
+    { value: "Normal", label: "Normal" }
+  ];
+
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-sm font-medium" htmlFor="inspectionDate">
-              Inspection Date
-            </label>
-            <Input
-              id="inspectionDate"
-              type="date"
-              value={formData.inspectionDate}
-              onChange={(e) => updateField('inspectionDate', e.target.value)}
-              className="mt-1"
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="inspectedBy">
-              Inspected By
-            </label>
-            <Input
-              id="inspectedBy"
-              type="text"
-              value={formData.inspectedBy}
-              onChange={(e) => updateField('inspectedBy', e.target.value)}
-              className="mt-1"
-              required
-            />
-          </div>
-        </div>
-        
-        <Separator />
-        
-        <div className="space-y-4">
-          <h3 className="font-medium text-lg">Safety & External Condition</h3>
-          
-          <YesNoSelectField
-            label="Rodent/Termite Encroachment"
-            value={formData.rodentTermiteEncroachment}
-            onChange={(value) => updateField('rodentTermiteEncroachment', value)}
-          />
-          
-          <YesNoSelectField
-            label="Clean/Dust Free"
-            value={formData.cleanDustFree}
-            onChange={(value) => updateField('cleanDustFree', value)}
-          />
-        </div>
-        
-        <Separator />
-        
-        <div className="space-y-4">
-          <h3 className="font-medium text-lg">Control & Protection</h3>
-          
-          <YesNoSelectField
-            label="Protection Button Enabled"
-            value={formData.protectionButtonEnabled}
-            onChange={(value) => updateField('protectionButtonEnabled', value)}
-          />
-          
-          <YesNoSelectField
-            label="Recloser Button Enabled"
-            value={formData.recloserButtonEnabled}
-            onChange={(value) => updateField('recloserButtonEnabled', value)}
-          />
-          
-          <YesNoSelectField
-            label="Ground/Earth Button Enabled"
-            value={formData.groundEarthButtonEnabled}
-            onChange={(value) => updateField('groundEarthButtonEnabled', value)}
-          />
-          
-          <YesNoSelectField
-            label="Remote Button Enabled"
-            value={formData.remoteButtonEnabled}
-            onChange={(value) => updateField('remoteButtonEnabled', value)}
-          />
-        </div>
-        
-        <Separator />
-        
-        <div className="space-y-4">
-          <h3 className="font-medium text-lg">Power & Operation</h3>
-          
-          <YesNoSelectField
-            label="AC Power On"
-            value={formData.acPowerOn}
-            onChange={(value) => updateField('acPowerOn', value)}
-          />
-          
-          <YesNoSelectField
-            label="Battery Power Low"
-            value={formData.batteryPowerLow}
-            onChange={(value) => updateField('batteryPowerLow', value)}
-          />
-          
-          <YesNoSelectField
-            label="Handle Lock On"
-            value={formData.handleLockOn}
-            onChange={(value) => updateField('handleLockOn', value)}
-          />
-          
-          <YesNoSelectField
-            label="Gas Level Low"
-            value={formData.gasLevelLow}
-            onChange={(value) => updateField('gasLevelLow', value)}
-          />
-        </div>
-        
-        <Separator />
-        
-        <div className="space-y-4">
-          <h3 className="font-medium text-lg">Electrical & Structural Integrity</h3>
-          
-          <YesNoSelectField
-            label="Earthing Arrangement Adequate"
-            value={formData.earthingArrangementAdequate}
-            onChange={(value) => updateField('earthingArrangementAdequate', value)}
-          />
-          
-          <YesNoSelectField
-            label="No Fuses Blown"
-            value={formData.noFusesBlown}
-            onChange={(value) => updateField('noFusesBlown', value)}
-          />
-          
-          <YesNoSelectField
-            label="No Damage to Bushings"
-            value={formData.noDamageToBushings}
-            onChange={(value) => updateField('noDamageToBushings', value)}
-          />
-          
-          <YesNoSelectField
-            label="No Damage to HV Connections"
-            value={formData.noDamageToHVConnections}
-            onChange={(value) => updateField('noDamageToHVConnections', value)}
-          />
-          
-          <YesNoSelectField
-            label="Insulators Clean"
-            value={formData.insulatorsClean}
-            onChange={(value) => updateField('insulatorsClean', value)}
-          />
-          
-          <YesNoSelectField
-            label="Paintwork Adequate"
-            value={formData.paintworkAdequate}
-            onChange={(value) => updateField('paintworkAdequate', value)}
-          />
-          
-          <YesNoSelectField
-            label="PT Fuse Link Intact"
-            value={formData.ptFuseLinkIntact}
-            onChange={(value) => updateField('ptFuseLinkIntact', value)}
-          />
-          
-          <YesNoSelectField
-            label="No Corrosion"
-            value={formData.noCorrosion}
-            onChange={(value) => updateField('noCorrosion', value)}
-          />
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mb-4">
-            <label className="text-sm font-medium">Silica Gel Condition</label>
-            <div className="md:col-span-2">
-              <Select 
-                value={formData.silicaGelCondition} 
-                onValueChange={(val) => updateField('silicaGelCondition', val)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  {silicaGelOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <YesNoSelectField
-            label="Correct Labelling"
-            value={formData.correctLabelling}
-            onChange={(value) => updateField('correctLabelling', value)}
-          />
-        </div>
-        
-        <Separator />
-        
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="space-y-4">
         <div>
-          <label className="text-sm font-medium" htmlFor="remarks">
-            Remarks / Additional Observations
+          <label className="block text-sm font-medium mb-1">
+            Inspection Date
+          </label>
+          <Input
+            type="date"
+            {...register("inspectionDate", { required: "Date is required" })}
+            className={errors.inspectionDate ? "border-red-500" : ""}
+          />
+          {errors.inspectionDate && (
+            <p className="text-red-500 text-xs mt-1">{errors.inspectionDate.message?.toString()}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Inspected By
+          </label>
+          <Input
+            {...register("inspectedBy", { required: "Inspector name is required" })}
+            placeholder="Enter inspector name"
+            className={errors.inspectedBy ? "border-red-500" : ""}
+          />
+          {errors.inspectedBy && (
+            <p className="text-red-500 text-xs mt-1">{errors.inspectedBy.message?.toString()}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium">Inspection Checklist</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SelectField
+              label="Rodent/Termite Encroachment"
+              name="rodentTermiteEncroachment"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.rodentTermiteEncroachment}
+              error={errors.rodentTermiteEncroachment}
+            />
+            
+            <SelectField
+              label="Clean/Dust Free"
+              name="cleanDustFree"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.cleanDustFree}
+              error={errors.cleanDustFree}
+            />
+            
+            <SelectField
+              label="Protection Button Enabled"
+              name="protectionButtonEnabled"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.protectionButtonEnabled}
+              error={errors.protectionButtonEnabled}
+            />
+            
+            <SelectField
+              label="Recloser Button Enabled"
+              name="recloserButtonEnabled"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.recloserButtonEnabled}
+              error={errors.recloserButtonEnabled}
+            />
+            
+            <SelectField
+              label="Ground/Earth Button Enabled"
+              name="groundEarthButtonEnabled"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.groundEarthButtonEnabled}
+              error={errors.groundEarthButtonEnabled}
+            />
+            
+            <SelectField
+              label="AC Power On"
+              name="acPowerOn"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.acPowerOn}
+              error={errors.acPowerOn}
+            />
+            
+            <SelectField
+              label="Battery Power Low"
+              name="batteryPowerLow"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.batteryPowerLow}
+              error={errors.batteryPowerLow}
+            />
+            
+            <SelectField
+              label="Handle Lock On"
+              name="handleLockOn"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.handleLockOn}
+              error={errors.handleLockOn}
+            />
+            
+            <SelectField
+              label="Remote Button Enabled"
+              name="remoteButtonEnabled"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.remoteButtonEnabled}
+              error={errors.remoteButtonEnabled}
+            />
+            
+            <SelectField
+              label="Gas Level Low"
+              name="gasLevelLow"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.gasLevelLow}
+              error={errors.gasLevelLow}
+            />
+            
+            <SelectField
+              label="Earthing Arrangement Adequate"
+              name="earthingArrangementAdequate"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.earthingArrangementAdequate}
+              error={errors.earthingArrangementAdequate}
+            />
+            
+            <SelectField
+              label="No Fuses Blown"
+              name="noFusesBlown"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.noFusesBlown}
+              error={errors.noFusesBlown}
+            />
+            
+            <SelectField
+              label="No Damage to Bushings"
+              name="noDamageToBushings"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.noDamageToBushings}
+              error={errors.noDamageToBushings}
+            />
+            
+            <SelectField
+              label="No Damage to HV Connections"
+              name="noDamageToHVConnections"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.noDamageToHVConnections}
+              error={errors.noDamageToHVConnections}
+            />
+            
+            <SelectField
+              label="Insulators Clean"
+              name="insulatorsClean"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.insulatorsClean}
+              error={errors.insulatorsClean}
+            />
+            
+            <SelectField
+              label="Paintwork Adequate"
+              name="paintworkAdequate"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.paintworkAdequate}
+              error={errors.paintworkAdequate}
+            />
+            
+            <SelectField
+              label="PT Fuse Link Intact"
+              name="ptFuseLinkIntact"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.ptFuseLinkIntact}
+              error={errors.ptFuseLinkIntact}
+            />
+            
+            <SelectField
+              label="No Corrosion"
+              name="noCorrosion"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.noCorrosion}
+              error={errors.noCorrosion}
+            />
+            
+            <SelectField
+              label="Silica Gel Condition"
+              name="silicaGelCondition"
+              register={register}
+              options={silicaGelOptions}
+              defaultValue={formValues.silicaGelCondition}
+              error={errors.silicaGelCondition}
+            />
+            
+            <SelectField
+              label="Correct Labelling"
+              name="correctLabelling"
+              register={register}
+              options={yesNoOptions}
+              defaultValue={formValues.correctLabelling}
+              error={errors.correctLabelling}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Remarks/Observations
           </label>
           <Textarea
-            id="remarks"
-            value={formData.remarks}
-            onChange={(e) => updateField('remarks', e.target.value)}
-            className="mt-1"
-            rows={4}
+            {...register("remarks")}
+            placeholder="Enter any additional remarks or observations"
+            className="h-32"
           />
         </div>
-        
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={onFormCancel}>
-            Cancel
-          </Button>
-          <Button type="submit">
-            {existingInspection ? 'Update Inspection' : 'Submit Inspection'}
-          </Button>
-        </div>
+      </div>
+      
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onFormCancel}
+        >
+          Cancel
+        </Button>
+        <Button type="submit">
+          {isEditMode ? "Update Inspection" : "Submit Inspection"}
+        </Button>
       </div>
     </form>
+  );
+}
+
+interface SelectFieldProps {
+  label: string;
+  name: string;
+  register: any;
+  options: { value: string; label: string }[];
+  defaultValue: string;
+  error?: any;
+}
+
+function SelectField({ label, name, register, options, defaultValue, error }: SelectFieldProps) {
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        {label}
+      </label>
+      <select
+        {...register(name)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        defaultValue={defaultValue}
+      >
+        {options.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p className="text-red-500 text-xs mt-1">{error.message?.toString()}</p>
+      )}
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VITAssetsTable } from "@/components/vit/VITAssetsTable";
-import VITAssetForm from "@/components/vit/VITAssetForm";
+import { VITAssetForm } from "@/components/vit/VITAssetForm";
 import { VITInspectionForm } from "@/components/vit/VITInspectionForm";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VITAsset } from "@/lib/types";
@@ -107,9 +107,9 @@ export default function VITInspectionPage() {
             </SheetHeader>
             <div className="mt-6">
               <VITAssetForm 
-                asset={selectedAsset || undefined} 
-                onSubmit={handleAssetFormClose}
-                onCancel={handleAssetFormClose}
+                asset={selectedAsset} 
+                onFormSubmit={handleAssetFormClose}
+                onFormCancel={handleAssetFormClose}
               />
             </div>
           </SheetContent>
@@ -126,9 +126,9 @@ export default function VITInspectionPage() {
             </SheetHeader>
             <div className="mt-6">
               <VITInspectionForm 
-                assetId={selectedAssetId || undefined}
-                onSubmit={handleInspectionFormClose}
-                onCancel={handleInspectionFormClose}
+                assetId={selectedAssetId || ""}
+                onFormSubmit={handleInspectionFormClose}
+                onFormCancel={handleInspectionFormClose}
               />
             </div>
           </SheetContent>
