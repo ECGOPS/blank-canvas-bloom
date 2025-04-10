@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/contexts/DataContext";
 import { Layout } from "@/components/layout/Layout";
 import { VITInspectionForm } from "@/components/vit/VITInspectionForm";
 import { VITAssetsTable } from "@/components/vit/VITAssetsTable";
-import { VITAssetForm } from "@/components/vit/VITAssetForm";
+import VITAssetForm from "@/components/vit/VITAssetForm";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
@@ -631,4 +630,3 @@ function InspectionRecordsTable({ onViewDetails, onEditInspection, onViewAsset }
     </div>
   );
 }
-

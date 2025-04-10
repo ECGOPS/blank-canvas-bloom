@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { useData } from "@/contexts/DataContext";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VITAssetsTable } from "@/components/vit/VITAssetsTable";
-import { VITAssetForm } from "@/components/vit/VITAssetForm";
+import VITAssetForm from "@/components/vit/VITAssetForm";
 import { VITInspectionForm } from "@/components/vit/VITInspectionForm";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { VITAsset } from "@/lib/types";

@@ -17,13 +17,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/components/ui/sonner";
 import { VITAsset, VoltageLevel, VITStatus } from "@/lib/types";
 
-export default function VITAssetForm() {
+// Define props interface for VITAssetForm
+export interface VITAssetFormProps {
+  asset?: VITAsset;
+  onSubmit: () => void;
+  onCancel: () => void;
+}
+
+// Change to default export
+export default function VITAssetForm({ asset, onSubmit, onCancel }: VITAssetFormProps) {
   const { user } = useAuth();
-  const { regions, districts, addVITAsset } = useData();
+  const { regions, districts, addVITAsset, updateVITAsset } = useData();
   const navigate = useNavigate();
-  const [regionId, setRegionId] = useState("");
-  const [districtId, setDistrictId] = useState("");
-  const [formData, setFormData] = useState<Partial<VITAsset>>({
+  const [regionId, setRegionId] = useState(asset?.regionId || "");
+  const [districtId, setDistrictId] = useState(asset?.districtId || "");
+  const [formData, setFormData] = useState<Partial<VITAsset>>(asset || {
     voltageLevel: "11KV",
     status: "Operational",
   });
@@ -47,7 +55,7 @@ export default function VITAssetForm() {
         }
       }
     }
-  }, [user, regions, districts]);
+  }, [user, regions, districts, asset]);
 
   // Filter regions and districts based on user role
   const filteredRegions = user?.role === "global_engineer"
@@ -109,17 +117,24 @@ export default function VITAssetForm() {
       createdBy: user?.name || "Anonymous"
     };
 
-    addVITAsset(assetData);
-    navigate("/vit-assets");
+    if (asset?.id) {
+      // Update existing asset
+      updateVITAsset({ ...assetData, id: asset.id });
+    } else {
+      // Add new asset
+      addVITAsset(assetData);
+    }
+    
+    onSubmit();
   };
 
   return (
     <div className="container py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Add New VIT Asset</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{asset ? "Edit VIT Asset" : "Add New VIT Asset"}</h1>
           <p className="text-muted-foreground mt-1">
-            Fill in the details to register a new VIT asset
+            {asset ? "Update the details of the VIT asset" : "Fill in the details to register a new VIT asset"}
           </p>
         </div>
       </div>
@@ -273,10 +288,10 @@ export default function VITAssetForm() {
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              <Button type="button" variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button type="submit">Add Asset</Button>
+              <Button type="submit">{asset ? "Update Asset" : "Add Asset"}</Button>
             </div>
           </form>
         </CardContent>
