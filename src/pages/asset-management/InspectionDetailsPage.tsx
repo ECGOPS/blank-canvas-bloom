@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -119,10 +120,10 @@ export default function InspectionDetailsPage() {
                 <p className="text-sm font-medium text-muted-foreground">Status Summary</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {inspection.items.flatMap(category => category.items).filter(item => item.status === "good").length} good
+                    {inspection.items.flatMap(category => category.items || []).filter(item => item && item.status === "good").length} good
                   </span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {inspection.items.flatMap(category => category.items).filter(item => item.status === "bad").length} bad
+                    {inspection.items.flatMap(category => category.items || []).filter(item => item && item.status === "bad").length} bad
                   </span>
                 </div>
               </div>
@@ -149,21 +150,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="general">
                 <div className="space-y-4">
                   {getItemsByCategory("general building").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
+                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item.name}</h3>
+                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
+                            {item?.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
+                            item?.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
+                            {item?.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
@@ -175,21 +176,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="control">
                 <div className="space-y-4">
                   {getItemsByCategory("control equipment").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
+                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item.name}</h3>
+                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
+                            {item?.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
+                            item?.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
+                            {item?.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
@@ -201,21 +202,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="transformer">
                 <div className="space-y-4">
                   {getItemsByCategory("power transformer").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
+                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item.name}</h3>
+                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
+                            {item?.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
+                            item?.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
+                            {item?.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
@@ -227,21 +228,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="outdoor">
                 <div className="space-y-4">
                   {getItemsByCategory("outdoor equipment").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
+                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item.name}</h3>
+                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
+                            {item?.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
+                            item?.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
+                            {item?.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
