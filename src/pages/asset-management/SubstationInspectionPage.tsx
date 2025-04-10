@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,13 +122,12 @@ export default function SubstationInspectionPage() {
         const region = regions.find(r => r.id === regionId);
         if (!region) return false;
         
-        // Safe check to make sure region.districts exists before using some
+        // Make sure region.districts exists and is an array
         const regionDistricts = region.districts || [];
-        
-        // Make sure we have a valid array before calling 'some'
         if (!Array.isArray(regionDistricts)) return false;
         
-        return regionDistricts.some(rd => rd.id === d.id) && (
+        // Now safely use some
+        return regionDistricts.some(rd => rd === d.id || rd.id === d.id) && (
           user?.role === "district_engineer" 
             ? user.district === d.name 
             : true

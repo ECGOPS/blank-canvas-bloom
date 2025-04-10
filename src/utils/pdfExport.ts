@@ -650,7 +650,7 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
     ["Date", formatDate(inspection.date)],
     ["Type", inspection.type],
     ["Created By", inspection.createdBy],
-    ["Created At", new Date(inspection.createdAt).toLocaleString()]
+    ["Created At", inspection.createdAt ? new Date(inspection.createdAt).toLocaleString() : ""]
   ];
 
   // Create header rows for each inspection category
@@ -709,4 +709,4 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
   const url = URL.createObjectURL(blob);
   
   link.setAttribute("href", url);
-  link.setAttribute("download", `substation-
+  link.setAttribute
