@@ -13,19 +13,23 @@ export function StatsOverview({ op5Faults, controlOutages }: StatsOverviewProps)
 
   useEffect(() => {
     // Calculate total faults and outages
-    setTotalFaults(op5Faults.length);
-    setTotalOutages(controlOutages.length);
+    setTotalFaults(op5Faults?.length || 0);
+    setTotalOutages(controlOutages?.length || 0);
 
     // Calculate total affected population
     let totalAffected = 0;
-    op5Faults.forEach(fault => {
-      totalAffected += fault.affectedPopulation.rural + fault.affectedPopulation.urban + fault.affectedPopulation.metro;
-    });
+    if (op5Faults && op5Faults.length > 0) {
+      op5Faults.forEach(fault => {
+        if (fault.affectedPopulation) {
+          totalAffected += fault.affectedPopulation.rural + fault.affectedPopulation.urban + fault.affectedPopulation.metro;
+        }
+      });
+    }
     setAffectedPopulation(totalAffected);
 
     // Calculate average outage time (in minutes)
     let totalDuration = 0;
-    const faultsWithDuration = op5Faults.filter(fault => fault.outrageDuration !== undefined);
+    const faultsWithDuration = op5Faults?.filter(fault => fault.outrageDuration !== undefined) || [];
     faultsWithDuration.forEach(fault => {
       if (fault.outrageDuration) {
         totalDuration += fault.outrageDuration;
