@@ -5,7 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SubstationInspection } from "@/lib/types";
+import { SubstationInspection, InspectionItem } from "@/lib/types";
 import { useData } from "@/contexts/DataContext";
 import { format } from "date-fns";
 import { ChevronLeft, Pencil } from "lucide-react";
@@ -19,7 +19,7 @@ export default function InspectionDetailsPage() {
   const [activeTab, setActiveTab] = useState("general");
 
   useEffect(() => {
-    if (id) {
+    if (id && getSavedInspection) {
       const loadedInspection = getSavedInspection(id);
       if (loadedInspection) {
         setInspection(loadedInspection);
@@ -45,21 +45,16 @@ export default function InspectionDetailsPage() {
   }
 
   const getItemsByCategory = (categoryName: string) => {
-    const category = inspection.items.find(cat => cat.category === categoryName);
-    return category ? category.items : [];
+    return inspection.items.filter(item => item.category === categoryName);
   };
 
   // Safely count statuses
   const countGoodItems = () => {
-    return inspection.items.flatMap(category => 
-      category.items || []
-    ).filter(item => item && item.status === "good").length;
+    return inspection.items.filter(item => item.status === "good").length;
   };
   
   const countBadItems = () => {
-    return inspection.items.flatMap(category => 
-      category.items || []
-    ).filter(item => item && item.status === "bad").length;
+    return inspection.items.filter(item => item.status === "bad").length;
   };
 
   return (
@@ -163,21 +158,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="general">
                 <div className="space-y-4">
                   {getItemsByCategory("general building").map((item) => (
-                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
+                    <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
+                          <h3 className="font-medium">{item.name}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item?.remarks || "No remarks"}
+                            {item.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item?.status === "good" 
+                            item.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item?.status === "good" ? "Good" : "Bad"}
+                            {item.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
@@ -189,21 +184,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="control">
                 <div className="space-y-4">
                   {getItemsByCategory("control equipment").map((item) => (
-                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
+                    <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
+                          <h3 className="font-medium">{item.name}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item?.remarks || "No remarks"}
+                            {item.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item?.status === "good" 
+                            item.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item?.status === "good" ? "Good" : "Bad"}
+                            {item.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
@@ -215,21 +210,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="transformer">
                 <div className="space-y-4">
                   {getItemsByCategory("power transformer").map((item) => (
-                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
+                    <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
+                          <h3 className="font-medium">{item.name}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item?.remarks || "No remarks"}
+                            {item.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item?.status === "good" 
+                            item.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item?.status === "good" ? "Good" : "Bad"}
+                            {item.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>
@@ -241,21 +236,21 @@ export default function InspectionDetailsPage() {
               <TabsContent value="outdoor">
                 <div className="space-y-4">
                   {getItemsByCategory("outdoor equipment").map((item) => (
-                    <div key={item?.id || Math.random().toString()} className="border rounded-lg p-4">
+                    <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{item?.name || "Unknown"}</h3>
+                          <h3 className="font-medium">{item.name}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {item?.remarks || "No remarks"}
+                            {item.remarks || "No remarks"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item?.status === "good" 
+                            item.status === "good" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-red-100 text-red-800"
                           }`}>
-                            {item?.status === "good" ? "Good" : "Bad"}
+                            {item.status === "good" ? "Good" : "Bad"}
                           </span>
                         </div>
                       </div>

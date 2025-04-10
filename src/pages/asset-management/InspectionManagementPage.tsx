@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useNavigate } from "react-router-dom";
 import {
@@ -53,8 +53,12 @@ export default function InspectionManagementPage() {
 
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this inspection?")) {
-      deleteInspection(id);
-      toast.success("Inspection deleted successfully");
+      if (deleteInspection) {
+        deleteInspection(id);
+        toast.success("Inspection deleted successfully");
+      } else {
+        toast.error("Delete function not available");
+      }
     }
   };
 
@@ -132,9 +136,9 @@ export default function InspectionManagementPage() {
             <TableBody>
               {filteredInspections.length > 0 ? (
                 filteredInspections.map((inspection) => {
-                  const allItems = inspection.items.flatMap(category => category.items || []);
-                  const goodItems = allItems.filter(item => item?.status === "good").length;
-                  const badItems = allItems.filter(item => item?.status === "bad").length;
+                  // Count good and bad items
+                  const goodItems = inspection.items.filter(item => item.status === "good").length;
+                  const badItems = inspection.items.filter(item => item.status === "bad").length;
                   
                   return (
                     <TableRow key={inspection.id}>

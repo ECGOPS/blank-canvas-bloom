@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,12 +116,13 @@ export default function SubstationInspectionPage() {
   
   const filteredDistricts = regionId
     ? districts.filter(d => {
-        // Fix: Check if region exists before accessing districts array
+        // Check if the region exists before accessing its districts
         const region = regions.find(r => r.id === regionId);
-        if (!region || !region.districts) return false;
+        if (!region) return false;
         
-        // Now we can safely access region.districts
-        return region.districts.some(rd => rd.id === d.id) && (
+        // Safe check before using the some method
+        const regionDistricts = region.districts || [];
+        return regionDistricts.some(rd => rd.id === d.id) && (
           user?.role === "district_engineer" 
             ? user.district === d.name 
             : true
@@ -223,9 +223,13 @@ export default function SubstationInspectionPage() {
       createdAt: new Date().toISOString(),
     };
     
-    saveInspection(inspectionData);
-    toast.success("Inspection saved successfully");
-    navigate("/asset-management/inspection-management");
+    if (saveInspection) {
+      saveInspection(inspectionData);
+      toast.success("Inspection saved successfully");
+      navigate("/asset-management/inspection-management");
+    } else {
+      toast.error("Failed to save inspection");
+    }
   };
 
   return (
@@ -313,6 +317,27 @@ export default function SubstationInspectionPage() {
                       <SelectItem value="outdoor">Outdoor</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="substationNo">Substation Number</Label>
+                  <Input
+                    id="substationNo"
+                    value={formData.substationNo || ""}
+                    onChange={(e) => handleInputChange("substationNo", e.target.value)}
+                    required
+                    placeholder="Enter substation number"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="substationName">Substation Name (Optional)</Label>
+                  <Input
+                    id="substationName"
+                    value={formData.substationName || ""}
+                    onChange={(e) => handleInputChange("substationName", e.target.value)}
+                    placeholder="Enter substation name"
+                  />
                 </div>
               </div>
             </CardContent>

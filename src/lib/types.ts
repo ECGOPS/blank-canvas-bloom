@@ -144,7 +144,7 @@ export type VITInspectionChecklist = {
   createdAt: string;
 };
 
-// Updated InspectionItem to match how it's used in the code
+// Define the InspectionItem type
 export interface InspectionItem {
   id: string;
   category: string;
@@ -154,11 +154,13 @@ export interface InspectionItem {
   remarks?: string;
 }
 
+// Define the InspectionCategory type
 export interface InspectionCategory {
   category: string;
   items: InspectionItem[];
 }
 
+// Define the SubstationInspection type
 export interface SubstationInspection {
   id: string;
   regionId?: string;
