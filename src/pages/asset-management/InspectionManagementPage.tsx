@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useNavigate } from "react-router-dom";
 import {
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubstationInspection } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Eye, Pencil, Trash2, FileDown, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { formatDate } from "@/utils/calculations";
@@ -132,9 +132,13 @@ export default function InspectionManagementPage() {
             <TableBody>
               {filteredInspections.length > 0 ? (
                 filteredInspections.map((inspection) => {
-                  const allItems = inspection.items.flatMap(category => category.items || []);
-                  const goodItems = allItems.filter(item => item?.status === "good").length;
-                  const badItems = allItems.filter(item => item?.status === "bad").length;
+                  // Calculate status summary correctly
+                  const allItems = inspection.items.flatMap(category => 
+                    category.items ? category.items : []
+                  ).filter(item => item !== undefined);
+                  
+                  const goodItems = allItems.filter(item => item && item.status === "good").length;
+                  const badItems = allItems.filter(item => item && item.status === "bad").length;
                   
                   return (
                     <TableRow key={inspection.id}>

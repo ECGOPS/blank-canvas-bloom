@@ -5,7 +5,7 @@ import { Edit, Download, FileText, MoreHorizontal, Trash2 } from "lucide-react";
 import { VITInspectionChecklist, VITAsset } from "@/lib/types";
 import { formatDate } from "@/utils/calculations";
 import { InspectionChecklistItem } from "./InspectionChecklistItem";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { exportInspectionToCsv, exportInspectionToPDF } from "@/utils/pdfExport";
 
 type InspectionRecordProps = {
@@ -28,12 +28,13 @@ export const InspectionRecord = ({
   
   const handleExportToCsv = () => {
     exportInspectionToCsv(inspection, asset, getRegionName, getDistrictName);
+    toast.success("CSV export generated successfully");
   };
   
   const handleExportToPdf = () => {
     const filename = exportInspectionToPDF(inspection, asset, getRegionName, getDistrictName);
     if (filename) {
-      toast.success("Comprehensive report generated successfully");
+      toast.success("PDF report generated successfully");
     }
   };
   
