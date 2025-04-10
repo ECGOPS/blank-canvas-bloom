@@ -28,7 +28,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Region, District, ControlSystemOutage, FaultType } from "@/lib/types";
+import { ControlSystemOutage, FaultType } from "@/lib/types";
+
+export interface ControlSystemOutageFormProps {
+  defaultRegionId?: string;
+  defaultDistrictId?: string;
+}
 
 const formSchema = z.object({
   regionId: z.string().min(1, {
@@ -66,13 +71,13 @@ const formSchema = z.object({
   }),
 });
 
-export function ControlSystemOutageForm() {
+export function ControlSystemOutageForm({ defaultRegionId, defaultDistrictId }: ControlSystemOutageFormProps) {
   const { user } = useAuth();
   const { regions, districts, addControlOutage } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [regionId, setRegionId] = useState("");
-  const [districtId, setDistrictId] = useState("");
+  const [regionId, setRegionId] = useState(defaultRegionId || "");
+  const [districtId, setDistrictId] = useState(defaultDistrictId || "");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,8 +100,17 @@ export function ControlSystemOutageForm() {
     },
   });
 
-  // Initialize region and district based on user role
   useEffect(() => {
+    if (defaultRegionId) {
+      setRegionId(defaultRegionId);
+      form.setValue("regionId", defaultRegionId);
+    }
+    
+    if (defaultDistrictId && defaultRegionId) {
+      setDistrictId(defaultDistrictId);
+      form.setValue("districtId", defaultDistrictId);
+    }
+    
     if (user) {
       if (user.role === "district_engineer" || user.role === "regional_engineer") {
         const userRegion = regions.find(r => r.name === user.region);
@@ -114,9 +128,8 @@ export function ControlSystemOutageForm() {
         }
       }
     }
-  }, [user, regions, districts, form]);
+  }, [user, regions, districts, form, defaultRegionId, defaultDistrictId]);
 
-  // Filter regions and districts based on user role
   const filteredRegions = user?.role === "global_engineer"
     ? regions
     : regions.filter(r => user?.region ? r.name === user.region : true);
@@ -132,7 +145,6 @@ export function ControlSystemOutageForm() {
       })
     : [];
 
-  // Handle region change
   const handleRegionChange = (value: string) => {
     setRegionId(value);
     form.setValue("regionId", value);
@@ -140,7 +152,6 @@ export function ControlSystemOutageForm() {
     form.setValue("districtId", "");
   };
 
-  // Handle district change
   const handleDistrictChange = (value: string) => {
     setDistrictId(value);
     form.setValue("districtId", value);

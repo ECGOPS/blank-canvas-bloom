@@ -1,236 +1,112 @@
+import React from 'react';
+import { useData } from '@/contexts/DataContext';
+import { VITInspectionChecklist } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDate } from '@/utils/calculations';
+import { exportVITInspectionToCsv, exportVITAssetToPDF } from '@/utils/pdfExport';
+import { Download, Edit, Trash } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/sonner';
+import { YesNoStatus } from './YesNoStatus';
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Edit, Download, FileText, MoreHorizontal, Trash2 } from "lucide-react";
-import { VITInspectionChecklist, VITAsset } from "@/lib/types";
-import { formatDate } from "@/utils/calculations";
-import { InspectionChecklistItem } from "./InspectionChecklistItem";
-import { toast } from "sonner";
-import { exportInspectionToCsv, exportInspectionToPDF } from "@/utils/pdfExport";
-
-type InspectionRecordProps = {
+interface InspectionRecordProps {
   inspection: VITInspectionChecklist;
-  asset: VITAsset | null;
-  onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  getRegionName: (id: string) => string;
-  getDistrictName: (id: string) => string;
-};
+}
 
-export const InspectionRecord = ({ 
-  inspection, 
-  asset, 
-  onEdit, 
-  onDelete, 
-  getRegionName,
-  getDistrictName 
-}: InspectionRecordProps) => {
+export function InspectionRecord({ inspection, onDelete }: InspectionRecordProps) {
+  const { vitAssets } = useData();
+  const navigate = useNavigate();
   
-  const handleExportToCsv = () => {
-    exportInspectionToCsv(inspection, asset, getRegionName, getDistrictName);
-    toast.success("CSV export generated successfully");
-  };
+  const asset = vitAssets.find(a => a.id === inspection.vitAssetId);
   
-  const handleExportToPdf = () => {
-    const filename = exportInspectionToPDF(inspection, asset, getRegionName, getDistrictName);
-    if (filename) {
-      toast.success("PDF report generated successfully");
-    }
-  };
-  
-  // Helper function to determine if a value represents a positive status
-  const isGoodValue = (value: string, key: string): boolean => {
-    if (key === 'rodentTermiteEncroachment' || key === 'batteryPowerLow' || key === 'gasLevelLow') {
-      return value === "No";
-    } else if (key === 'silicaGelCondition') {
-      return value === "Good";
+  const handleExport = (format: 'csv' | 'pdf') => {
+    if (format === 'csv') {
+      exportVITInspectionToCsv(inspection);
+      toast.success("CSV file exported successfully");
     } else {
-      return value === "Yes";
+      // For PDF export, we need both the asset and inspection
+      if (asset) {
+        // Export the asset with this inspection
+        exportVITAssetToPDF(asset, [inspection]);
+        toast.success("PDF report generated successfully");
+      } else {
+        toast.error("Unable to generate PDF: Asset not found");
+      }
     }
   };
-
+  
+  const handleDelete = () => {
+    onDelete(inspection.id);
+    toast.success("Inspection deleted successfully");
+  };
+  
   return (
-    <div className="border rounded-lg p-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-medium">
-            Inspection on {formatDate(inspection.inspectionDate)}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Conducted by {inspection.inspectedBy}
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between">
+          <CardTitle>Inspection Record</CardTitle>
+          <Badge variant="secondary">{formatDate(inspection.inspectionDate)}</Badge>
+        </div>
+        <CardDescription>
+          Inspection ID: {inspection.id.substring(0, 8)}...
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p>
+          <strong>Asset ID:</strong> {inspection.vitAssetId}
+        </p>
+        <p>
+          <strong>Inspected By:</strong> {inspection.inspectedBy}
+        </p>
+        <YesNoStatus label="Rodent/Termite Encroachment" status={inspection.rodentTermiteEncroachment} />
+        <YesNoStatus label="Clean/Dust Free" status={inspection.cleanDustFree} />
+        <YesNoStatus label="Protection Button Enabled" status={inspection.protectionButtonEnabled} />
+        <YesNoStatus label="Recloser Button Enabled" status={inspection.recloserButtonEnabled} />
+        <YesNoStatus label="Ground/Earth Button Enabled" status={inspection.groundEarthButtonEnabled} />
+        <YesNoStatus label="AC Power On" status={inspection.acPowerOn} />
+        <YesNoStatus label="Battery Power Low" status={inspection.batteryPowerLow} />
+        <YesNoStatus label="Handle Lock On" status={inspection.handleLockOn} />
+        <YesNoStatus label="Remote Button Enabled" status={inspection.remoteButtonEnabled} />
+        <YesNoStatus label="Gas Level Low" status={inspection.gasLevelLow} />
+        <YesNoStatus label="Earthing Arrangement Adequate" status={inspection.earthingArrangementAdequate} />
+        <YesNoStatus label="No Fuses Blown" status={inspection.noFusesBlown} />
+        <YesNoStatus label="No Damage to Bushings" status={inspection.noDamageToBushings} />
+        <YesNoStatus label="No Damage to HV Connections" status={inspection.noDamageToHVConnections} />
+        <YesNoStatus label="Insulators Clean" status={inspection.insulatorsClean} />
+        <YesNoStatus label="Paintwork Adequate" status={inspection.paintworkAdequate} />
+        <YesNoStatus label="PT Fuse Link Intact" status={inspection.ptFuseLinkIntact} />
+        <YesNoStatus label="No Corrosion" status={inspection.noCorrosion} />
+        <p>
+          <strong>Silica Gel Condition:</strong> {inspection.silicaGelCondition}
+        </p>
+        <YesNoStatus label="Correct Labelling" status={inspection.correctLabelling} />
+        {inspection.remarks && (
+          <p>
+            <strong>Remarks:</strong> {inspection.remarks}
           </p>
-        </div>
-        
-        <div className="mt-2 md:mt-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <div className="px-2 py-1.5 text-sm font-semibold">Actions</div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onEdit(inspection.id)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportToCsv}>
-                <Download className="mr-2 h-4 w-4" />
-                Export to CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportToPdf}>
-                <FileText className="mr-2 h-4 w-4" />
-                Export to PDF
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="text-red-600"
-                onClick={() => onDelete(inspection.id)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <h4 className="text-sm font-medium mb-2">General Condition</h4>
-          <ul className="space-y-2">
-            <InspectionChecklistItem 
-              label="Rodent/Termite Encroachment" 
-              value={inspection.rodentTermiteEncroachment} 
-              isPositive={(val) => val === "No"} 
-            />
-            <InspectionChecklistItem 
-              label="Clean & Dust Free" 
-              value={inspection.cleanDustFree} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Silica Gel Condition" 
-              value={inspection.silicaGelCondition} 
-              isPositive={(val) => val === "Good"} 
-            />
-            <InspectionChecklistItem 
-              label="No Corrosion" 
-              value={inspection.noCorrosion} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Paintwork Adequate" 
-              value={inspection.paintworkAdequate} 
-              isPositive={(val) => val === "Yes"} 
-            />
-          </ul>
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-medium mb-2">Operational Status</h4>
-          <ul className="space-y-2">
-            <InspectionChecklistItem 
-              label="Protection Button Enabled" 
-              value={inspection.protectionButtonEnabled} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Recloser Button Enabled" 
-              value={inspection.recloserButtonEnabled} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="AC Power On" 
-              value={inspection.acPowerOn} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Battery Power Low" 
-              value={inspection.batteryPowerLow} 
-              isPositive={(val) => val === "No"} 
-            />
-            <InspectionChecklistItem 
-              label="Remote Button Enabled" 
-              value={inspection.remoteButtonEnabled} 
-              isPositive={(val) => val === "Yes"} 
-            />
-          </ul>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <h4 className="text-sm font-medium mb-2">Safety & Protection</h4>
-          <ul className="space-y-2">
-            <InspectionChecklistItem 
-              label="Ground/Earth Button Enabled" 
-              value={inspection.groundEarthButtonEnabled} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Handle Lock On" 
-              value={inspection.handleLockOn} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Earthing Arrangement Adequate" 
-              value={inspection.earthingArrangementAdequate} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Gas Level Low" 
-              value={inspection.gasLevelLow} 
-              isPositive={(val) => val === "No"} 
-            />
-            <InspectionChecklistItem 
-              label="Correct Labelling" 
-              value={inspection.correctLabelling} 
-              isPositive={(val) => val === "Yes"} 
-            />
-          </ul>
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-medium mb-2">Component Condition</h4>
-          <ul className="space-y-2">
-            <InspectionChecklistItem 
-              label="No Fuses Blown" 
-              value={inspection.noFusesBlown} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="No Damage to Bushings" 
-              value={inspection.noDamageToBushings} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="No Damage to HV Connections" 
-              value={inspection.noDamageToHVConnections} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="Insulators Clean" 
-              value={inspection.insulatorsClean} 
-              isPositive={(val) => val === "Yes"} 
-            />
-            <InspectionChecklistItem 
-              label="PT Fuse Link Intact" 
-              value={inspection.ptFuseLinkIntact} 
-              isPositive={(val) => val === "Yes"} 
-            />
-          </ul>
-        </div>
-      </div>
-      
-      {inspection.remarks && (
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">Remarks</h4>
-          <p className="text-sm bg-gray-50 p-3 rounded-md">{inspection.remarks}</p>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={() => handleExport('csv')}>
+          <Download className="mr-2 h-4 w-4" />
+          Export CSV
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => handleExport('pdf')}>
+          <Download className="mr-2 h-4 w-4" />
+          Export PDF
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/asset-management/edit-vit-inspection/${inspection.id}`)}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit
+        </Button>
+        <Button variant="destructive" size="sm" onClick={handleDelete}>
+          <Trash className="mr-2 h-4 w-4" />
+          Delete
+        </Button>
+      </CardFooter>
+    </Card>
   );
-};
+}

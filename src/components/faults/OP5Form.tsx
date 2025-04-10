@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { OP5Fault, Region, District, FaultType } from "@/lib/types";
+import { OP5Fault, FaultType } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -24,11 +24,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 
-interface OP5FormProps {
+export interface OP5FormProps {
   className?: string;
+  defaultRegionId?: string;
+  defaultDistrictId?: string;
 }
 
-export function OP5Form({ className }: OP5FormProps) {
+export function OP5Form({ className, defaultRegionId, defaultDistrictId }: OP5FormProps) {
   const { regions, districts, addOP5Fault } = useData();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -38,11 +40,23 @@ export function OP5Form({ className }: OP5FormProps) {
     affectedPopulation: { rural: 0, urban: 0, metro: 0 },
     reliabilityIndices: { saidi: 0, saifi: 0, caidi: 0 },
   });
-  const [regionId, setRegionId] = useState("");
-  const [districtId, setDistrictId] = useState("");
+  const [regionId, setRegionId] = useState(defaultRegionId || "");
+  const [districtId, setDistrictId] = useState(defaultDistrictId || "");
 
-  // Initialize region and district based on user role
+  // Initialize region and district based on user role and default props
   useEffect(() => {
+    // First set based on default props
+    if (defaultRegionId) {
+      setRegionId(defaultRegionId);
+      setFormData(prev => ({ ...prev, regionId: defaultRegionId }));
+    }
+    
+    if (defaultDistrictId && defaultRegionId) {
+      setDistrictId(defaultDistrictId);
+      setFormData(prev => ({ ...prev, districtId: defaultDistrictId }));
+    }
+    
+    // Then override with user role if needed
     if (user) {
       if (
         user.role === "district_engineer" ||
@@ -63,7 +77,7 @@ export function OP5Form({ className }: OP5FormProps) {
         }
       }
     }
-  }, [user, regions, districts]);
+  }, [user, regions, districts, defaultRegionId, defaultDistrictId]);
 
   // Filter regions and districts based on user role
   const filteredRegions =
@@ -175,7 +189,9 @@ export function OP5Form({ className }: OP5FormProps) {
   };
 
   return (
+    
     <Card className={cn("w-full", className)}>
+      
       <CardHeader>
         <CardTitle>Report OP5 Fault</CardTitle>
         <CardDescription>Submit a new OP5 fault report</CardDescription>
@@ -386,6 +402,7 @@ export function OP5Form({ className }: OP5FormProps) {
           <Button type="submit">Submit</Button>
         </form>
       </CardContent>
+    
     </Card>
   );
 }

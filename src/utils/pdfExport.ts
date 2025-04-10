@@ -1,3 +1,4 @@
+
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { VITAsset, VITInspectionChecklist, SubstationInspection } from "@/lib/types";
 import { LoadMonitoringData } from "@/lib/asset-types";
@@ -25,6 +26,7 @@ declare module "jspdf" {
       };
       pages: number[];
       getEncryptor(objectId: number): (data: string) => string;
+      getCurrentPageInfo: () => { pageNumber: number };
       getNumberOfPages: () => number;
     };
   }
@@ -49,7 +51,7 @@ export const exportVITAssetToCsv = (asset: VITAsset) => {
  */
 export const exportVITInspectionToCsv = (inspection: VITInspectionChecklist) => {
   const header = "ID,Asset ID,Inspection Date,Rodent/Termite Encroachment,Clean/Dust Free,Protection Button Enabled,Recloser Button Enabled,Ground/Earth Button Enabled,AC Power On,Battery Power Low,Handle Lock On,Remote Button Enabled,Gas Level Low,Earthing Arrangement Adequate,No Fuses Blown,No Damage to Bushings,No Damage to HV Connections,Insulators Clean,Paintwork Adequate,PT Fuse Link Intact,No Corrosion,Silica Gel Condition,Correct Labelling,Remarks\n";
-  const csv = header + `${inspection.id},${inspection.assetId},${inspection.inspectionDate},${inspection.rodentTermiteEncroachment},${inspection.cleanDustFree},${inspection.protectionButtonEnabled},${inspection.recloserButtonEnabled},${inspection.groundEarthButtonEnabled},${inspection.acPowerOn},${inspection.batteryPowerLow},${inspection.handleLockOn},${inspection.remoteButtonEnabled},${inspection.gasLevelLow},${inspection.earthingArrangementAdequate},${inspection.noFusesBlown},${inspection.noDamageToBushings},${inspection.noDamageToHVConnections},${inspection.insulatorsClean},${inspection.paintworkAdequate},${inspection.ptFuseLinkIntact},${inspection.noCorrosion},${inspection.silicaGelCondition},${inspection.correctLabelling},${inspection.remarks}\n`;
+  const csv = header + `${inspection.id},${inspection.vitAssetId || ''},${inspection.inspectionDate},${inspection.rodentTermiteEncroachment},${inspection.cleanDustFree},${inspection.protectionButtonEnabled},${inspection.recloserButtonEnabled},${inspection.groundEarthButtonEnabled},${inspection.acPowerOn},${inspection.batteryPowerLow},${inspection.handleLockOn},${inspection.remoteButtonEnabled},${inspection.gasLevelLow},${inspection.earthingArrangementAdequate},${inspection.noFusesBlown},${inspection.noDamageToBushings},${inspection.noDamageToHVConnections},${inspection.insulatorsClean},${inspection.paintworkAdequate},${inspection.ptFuseLinkIntact},${inspection.noCorrosion},${inspection.silicaGelCondition},${inspection.correctLabelling},${inspection.remarks}\n`;
 
   const blob = new Blob([csv], { type: 'text/csv' });
   const link = document.createElement('a');
@@ -57,6 +59,10 @@ export const exportVITInspectionToCsv = (inspection: VITInspectionChecklist) => 
   link.download = `vit-inspection-${inspection.id}.csv`;
   link.click();
 };
+
+// Alias for backward compatibility
+export const exportInspectionToCsv = exportVITInspectionToCsv;
+export const exportInspectionToPDF = exportVITAssetToPDF;
 
 /**
  * Generate PDF report for VIT asset
@@ -347,7 +353,7 @@ export const exportLoadMonitoringToPDF = (data: LoadMonitoringData) => {
   }
   
   // Draw percentage in circle
-  doc.setFillColor(...loadColor);
+  doc.setFillColor(loadColor[0], loadColor[1], loadColor[2]);
   doc.circle(60, 132, 15, 'F');
   doc.setTextColor(1, 1, 1);
   doc.setFontSize(14);
