@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,8 +117,12 @@ export default function SubstationInspectionPage() {
   
   const filteredDistricts = regionId
     ? districts.filter(d => {
+        // Fix: Check if region exists before accessing districts array
         const region = regions.find(r => r.id === regionId);
-        return region?.districts.some(rd => rd.id === d.id) && (
+        if (!region || !region.districts) return false;
+        
+        // Now we can safely access region.districts
+        return region.districts.some(rd => rd.id === d.id) && (
           user?.role === "district_engineer" 
             ? user.district === d.name 
             : true
@@ -202,7 +207,9 @@ export default function SubstationInspectionPage() {
         }))
     );
     
-    const inspectionData: Omit<SubstationInspection, "id"> = {
+    // Create a new SubstationInspection object with id
+    const inspectionData: SubstationInspection = {
+      id: uuidv4(), // Generate a new ID
       regionId,
       districtId,
       region: region,
@@ -216,7 +223,7 @@ export default function SubstationInspectionPage() {
       createdAt: new Date().toISOString(),
     };
     
-    const id = saveInspection(inspectionData);
+    saveInspection(inspectionData);
     toast.success("Inspection saved successfully");
     navigate("/asset-management/inspection-management");
   };

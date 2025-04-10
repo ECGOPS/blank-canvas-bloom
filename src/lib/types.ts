@@ -161,15 +161,15 @@ export interface InspectionCategory {
 
 export interface SubstationInspection {
   id: string;
-  regionId?: string; // Added to match usage in EditInspectionPage
-  districtId?: string; // Added to match usage in EditInspectionPage
+  regionId?: string;
+  districtId?: string;
   region: string;
   district: string;
   date: string;
   substationNo: string;
-  substationName?: string; // Added to match usage in EditInspectionPage
+  substationName?: string;
   type: 'indoor' | 'outdoor';
-  items: InspectionItem[]; // Changed from InspectionCategory[] to match usage
+  items: InspectionItem[];
   createdAt?: string;
   createdBy?: string;
 }
@@ -196,7 +196,7 @@ export interface DataContextType {
   vitAssets: VITAsset[];
   vitInspections: VITInspectionChecklist[];
   savedInspections?: SubstationInspection[];
-  loadMonitoringRecords?: any[]; // Added to match usage
+  loadMonitoringRecords?: any[];
   addOP5Fault: (fault: Omit<OP5Fault, "id" | "status">) => void;
   addControlOutage: (outage: Omit<ControlSystemOutage, "id" | "status">) => void;
   resolveFault: (id: string, type: "op5" | "control") => void;
@@ -212,7 +212,7 @@ export interface DataContextType {
   updateDistrict?: (id: string, updates: Partial<District>) => void;
   getSavedInspection?: (id: string) => SubstationInspection | undefined;
   updateInspection?: (id: string, data: Partial<SubstationInspection>) => void;
-  saveInspection?: (data: Omit<SubstationInspection, "id">) => string;
+  saveInspection?: (data: SubstationInspection) => string;
   deleteInspection?: (id: string) => void;
-  deleteLoadMonitoringRecord?: (id: string) => void; // Added to match usage
+  deleteLoadMonitoringRecord?: (id: string) => void;
 }

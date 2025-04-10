@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import regions from '../data/regions.json';
 import districts from '../data/districts.json';
@@ -222,6 +221,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Substation Inspection Methods
   const saveInspection = useCallback((inspection: SubstationInspection) => {
     setSavedInspectionsData(prev => [...prev, inspection]);
+    return inspection.id; // Return the ID for reference
   }, []);
   
   const getSavedInspection = useCallback((id: string) => {
@@ -310,7 +310,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [districtPopulationsData]);
 
-  // Compatibility methods for backward compatibility
   const addVITAsset = useCallback((asset: Omit<VITAsset, "id" | "createdAt" | "updatedAt" | "createdBy">) => {
     const newAsset: VITAsset = {
       id: uuidv4(),
@@ -333,12 +332,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [saveVITInspection, user]);
 
   const addOP5Fault = useCallback((fault: Omit<OP5Fault, "id" | "status" | "createdBy" | "createdAt">) => {
-    saveOP5Fault(fault);
-  }, [saveOP5Fault]);
+    // We need to manually add createdBy and createdAt if they're not provided
+    const faultWithMetadata = {
+      ...fault,
+      createdBy: fault.createdBy || (user?.name || 'Anonymous'),
+      createdAt: fault.createdAt || new Date().toISOString()
+    };
+    saveOP5Fault(faultWithMetadata);
+  }, [saveOP5Fault, user]);
 
   const addControlOutage = useCallback((outage: Omit<ControlSystemOutage, "id" | "status" | "createdBy" | "createdAt">) => {
-    saveControlSystemOutage(outage);
-  }, [saveControlSystemOutage]);
+    // We need to manually add createdBy and createdAt if they're not provided
+    const outageWithMetadata = {
+      ...outage,
+      createdBy: outage.createdBy || (user?.name || 'Anonymous'),
+      createdAt: outage.createdAt || new Date().toISOString()
+    };
+    saveControlSystemOutage(outageWithMetadata);
+  }, [saveControlSystemOutage, user]);
 
   // Add these methods for compatibility
   const resolveFault = useCallback((id: string, type: "op5" | "control") => {
