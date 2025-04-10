@@ -1,34 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "@/contexts/DataContext";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { VITAssetForm } from "@/components/vit/VITAssetForm";
-import { VITInspectionForm } from "@/components/vit/VITInspectionForm";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { VITInspectionChecklist } from "@/lib/types";
-import { formatDate } from "@/utils/calculations";
 import { toast } from "@/components/ui/sonner";
-import { InspectionRecord } from "@/components/vit/InspectionRecord";
+import { ChevronLeft, Plus, Edit, Trash } from "lucide-react";
+import { VITInspectionChecklist, InspectionRecordProps } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export default function VITInspectionManagementPage() {
-  const { vitInspections, deleteVITInspection } = useData();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
-  const [selectedInspection, setSelectedInspection] = useState<VITInspectionChecklist | null>(null);
+  const { vitInspections, deleteVITInspection } = useData();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredInspections, setFilteredInspections] = useState<VITInspectionChecklist[]>([]);
 
-  const filteredInspections = vitInspections?.filter(inspection =>
-    inspection.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inspection.vitAssetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inspection.inspectedBy?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  useEffect(() => {
+    // Filter inspections based on search query
+    const filtered = vitInspections.filter(inspection => {
+      const inspectedBy = inspection.inspectedBy || "";
+      return inspectedBy.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+    setFilteredInspections(filtered);
+  }, [searchQuery, vitInspections]);
 
-  const handleEdit = (inspection: VITInspectionChecklist) => {
-    setSelectedInspection(inspection);
-    setIsInspectionFormOpen(true);
+  const handleAddInspection = () => {
+    navigate("/asset-management/vit-inspection");
   };
 
   const handleDelete = (id: string) => {
@@ -38,74 +44,87 @@ export default function VITInspectionManagementPage() {
     }
   };
 
-  const handleInspectionFormClose = () => {
-    setIsInspectionFormOpen(false);
-    setSelectedInspection(null);
-  };
-
   return (
     <Layout>
       <div className="container py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">VIT Inspection Management</h1>
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/asset-management/vit-inspection")}
+          className="mb-4"
+        >
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back to VIT Inspection
+        </Button>
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">VIT Inspection Management</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and view all VIT inspection records
+            </p>
+          </div>
+
+          <Button onClick={handleAddInspection} className="mt-4 md:mt-0">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Inspection
+          </Button>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle>Search Inspections</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input
-              placeholder="Search by inspection ID, asset ID, or inspector name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 gap-6">
-          {filteredInspections.length > 0 ? (
-            filteredInspections.map((inspection) => (
-              <InspectionRecord
-                key={inspection.id}
-                inspection={inspection}
-                onDelete={handleDelete}
-                onEdit={() => handleEdit(inspection)}
-              />
-            ))
-          ) : (
-            <div className="text-center py-8">
-              {searchTerm ? (
-                <p className="text-muted-foreground">No inspections found matching your search.</p>
-              ) : (
-                <p className="text-muted-foreground">No inspections have been created yet.</p>
-              )}
-            </div>
-          )}
+        <div className="mb-4">
+          <Input
+            type="search"
+            placeholder="Search by inspector name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        {/* Edit Inspection Form Sheet */}
-        <Sheet open={isInspectionFormOpen} onOpenChange={setIsInspectionFormOpen}>
-          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Edit Inspection</SheetTitle>
-              <SheetDescription>
-                Update the details of this inspection record.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-6">
-              {selectedInspection && (
-                <VITInspectionForm
-                  assetId={selectedInspection.vitAssetId}
-                  inspectionData={selectedInspection}
-                  onFormSubmit={handleInspectionFormClose}
-                  onFormCancel={handleInspectionFormClose}
-                />
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Date</TableHead>
+                <TableHead>Inspector</TableHead>
+                <TableHead>Asset ID</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInspections.map((inspection) => (
+                <TableRow key={inspection.id}>
+                  <TableCell className="font-medium">{inspection.inspectionDate}</TableCell>
+                  <TableCell>{inspection.inspectedBy}</TableCell>
+                  <TableCell>{inspection.vitAssetId}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => navigate(`/asset-management/edit-vit-inspection/${inspection.id}`)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDelete(inspection.id)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredInspections.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    No inspections found.
+                  </TableCell>
+                </TableRow>
               )}
-            </div>
-          </SheetContent>
-        </Sheet>
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </Layout>
   );

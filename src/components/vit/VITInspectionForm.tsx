@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,13 +18,16 @@ export interface VITInspectionFormProps {
 }
 
 export function VITInspectionForm({ assetId, inspectionData, onFormSubmit, onFormCancel }: VITInspectionFormProps) {
-  const { addVITInspection, updateVITInspection, user } = useData();
+  const { addVITInspection, updateVITInspection, vitAssets } = useData();
   const isEditMode = !!inspectionData;
+  
+  // Default user name for inspection
+  const defaultInspectorName = "Inspector";
 
   // Default empty form values
   const defaultValues = {
     inspectionDate: new Date().toISOString().split('T')[0],
-    inspectedBy: user?.name || '',
+    inspectedBy: defaultInspectorName,
     rodentTermiteEncroachment: 'No' as YesNoOption,
     cleanDustFree: 'Yes' as YesNoOption,
     protectionButtonEnabled: 'Yes' as YesNoOption,

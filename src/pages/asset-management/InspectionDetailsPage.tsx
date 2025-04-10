@@ -1,265 +1,144 @@
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Layout } from "@/components/layout/Layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SubstationInspection } from "@/lib/types";
 import { useData } from "@/contexts/DataContext";
-import { format } from "date-fns";
-import { ChevronLeft, Pencil } from "lucide-react";
+import { Layout } from "@/components/layout/Layout";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
+import { ChevronLeft } from "lucide-react";
+import { VITAsset, VITInspectionChecklist, InspectionCategory, InspectionItem } from "@/lib/types";
+import { AssetInfoCard } from "@/components/vit/AssetInfoCard";
+import { InspectionRecord } from "@/components/vit/InspectionRecord";
 
-export default function InspectionDetailsPage() {
-  const { id } = useParams<{ id: string }>();
+export default function VITInspectionDetailsPage() {
+  const { id: assetId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getSavedInspection } = useData();
-  const [inspection, setInspection] = useState<SubstationInspection | null>(null);
-  const [activeTab, setActiveTab] = useState("general");
-
+  const { vitAssets, vitInspections, regions, districts, deleteVITInspection } = useData();
+  
+  const [asset, setAsset] = useState<VITAsset | null>(null);
+  const [inspections, setInspections] = useState<VITInspectionChecklist[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  
   useEffect(() => {
-    if (id) {
-      const loadedInspection = getSavedInspection && getSavedInspection(id);
-      if (loadedInspection) {
-        setInspection(loadedInspection);
+    if (assetId) {
+      setLoading(true);
+      // Find the asset
+      const foundAsset = vitAssets.find(a => a.id === assetId);
+      if (foundAsset) {
+        setAsset(foundAsset);
+        
+        // Find all inspections for this asset
+        const assetInspections = vitInspections.filter(i => i.vitAssetId === assetId);
+        setInspections(assetInspections);
+        setLoading(false);
       } else {
-        toast.error("Inspection not found");
-        navigate("/asset-management/inspection-management");
+        toast.error("Asset not found");
+        navigate("/asset-management/vit-inspection");
       }
     }
-  }, [id, getSavedInspection, navigate]);
-
-  if (!inspection) {
+  }, [assetId, vitAssets, vitInspections, navigate]);
+  
+  const getRegionName = (regionId: string) => {
+    const region = regions.find(r => r.id === regionId);
+    return region ? region.name : "Unknown";
+  };
+  
+  const getDistrictName = (districtId: string) => {
+    const district = districts.find(d => d.id === districtId);
+    return district ? district.name : "Unknown";
+  };
+  
+  const handleEdit = (inspectionId: string) => {
+    navigate(`/asset-management/edit-vit-inspection/${inspectionId}`);
+  };
+  
+  const handleDelete = (inspectionId: string) => {
+    if (window.confirm("Are you sure you want to delete this inspection record?")) {
+      deleteVITInspection(inspectionId);
+      // Update the local state to reflect the deletion
+      setInspections(prev => prev.filter(i => i.id !== inspectionId));
+      toast.success("Inspection record deleted successfully");
+    }
+  };
+  
+  if (loading || !asset) {
     return (
       <Layout>
-        <div className="container mx-auto py-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p>Loading inspection details...</p>
-            </CardContent>
-          </Card>
+        <div className="container py-8">
+          <p className="text-center">Loading asset details...</p>
         </div>
       </Layout>
     );
   }
-
-  const getItemsByCategory = (categoryName: string) => {
-    if (!inspection || !inspection.items) return [];
-    
-    const category = inspection.items.find(cat => cat && cat.category === categoryName);
-    // Return an empty array if category is not found or items are undefined
-    return category && category.items ? category.items : [];
-  };
-
+  
   return (
     <Layout>
-      <div className="container mx-auto py-8">
-        <div className="mb-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate("/asset-management/inspection-management")}
-            className="mb-4"
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Inspections
-          </Button>
+      <div className="container py-8">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate("/asset-management/vit-inspection")} 
+          className="mb-4"
+        >
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back to VIT Inspection
+        </Button>
+        
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">VIT Asset Details</h1>
+            <p className="text-muted-foreground mt-1">
+              View asset information and inspection history
+            </p>
+          </div>
           
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Inspection: {inspection.substationNo}
-            </h1>
-            
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/asset-management/edit-inspection/${id}`)}
-                className="flex items-center gap-2"
-              >
-                <Pencil size={16} />
-                Edit Inspection
-              </Button>
+          <Button 
+            onClick={() => navigate(`/asset-management/vit-inspection-form/${asset.id}`)}
+            className="mt-4 md:mt-0"
+          >
+            New Inspection
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Asset Information Card */}
+          <div className="lg:col-span-1">
+            <AssetInfoCard 
+              asset={asset}
+              getRegionName={getRegionName}
+              getDistrictName={getDistrictName}
+            />
+          </div>
+          
+          {/* Inspection History */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg border shadow-sm">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Inspection History</h2>
+                
+                {inspections.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No inspection records found for this asset.</p>
+                    <Button 
+                      onClick={() => navigate(`/asset-management/vit-inspection-form/${asset.id}`)}
+                      className="mt-4"
+                    >
+                      Conduct First Inspection
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {inspections.map((inspection) => (
+                      <InspectionRecord
+                        key={inspection.id}
+                        inspection={inspection}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Inspection Details</CardTitle>
-            <CardDescription>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <p><strong>Substation:</strong> {inspection.substationNo}</p>
-                  <p><strong>Region:</strong> {inspection.region}</p>
-                  <p><strong>District:</strong> {inspection.district}</p>
-                  <p><strong>Date:</strong> {inspection.date ? format(new Date(inspection.date), "PPP") : "N/A"}</p>
-                  <p><strong>Type:</strong> {inspection.type}</p>
-                </div>
-                <div>
-                  <p><strong>Created By:</strong> {inspection.createdBy || "N/A"}</p>
-                  <p><strong>Created At:</strong> {inspection.createdAt ? format(new Date(inspection.createdAt), "PPP") : "N/A"}</p>
-                </div>
-              </div>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Region</p>
-                <p className="text-lg">{inspection.region}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">District</p>
-                <p className="text-lg">{inspection.district}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Substation Number</p>
-                <p className="text-lg">{inspection.substationNo}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Type</p>
-                <p className="text-lg capitalize">{inspection.type}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Status Summary</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {inspection.items
-                      .flatMap(category => category && category.items ? category.items : [])
-                      .filter(item => item && item.status === "good").length} good
-                  </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {inspection.items
-                      .flatMap(category => category && category.items ? category.items : [])
-                      .filter(item => item && item.status === "bad").length} bad
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Inspection Checklist Results</CardTitle>
-            <CardDescription>
-              Detailed results of the inspection checklist
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="general">General Building</TabsTrigger>
-                <TabsTrigger value="control">Control Equipment</TabsTrigger>
-                <TabsTrigger value="transformer">Power Transformer</TabsTrigger>
-                <TabsTrigger value="outdoor">Outdoor Equipment</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="general">
-                <div className="space-y-4">
-                  {getItemsByCategory("general building").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{item.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="control">
-                <div className="space-y-4">
-                  {getItemsByCategory("control equipment").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{item.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="transformer">
-                <div className="space-y-4">
-                  {getItemsByCategory("power transformer").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{item.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="outdoor">
-                <div className="space-y-4">
-                  {getItemsByCategory("outdoor equipment").map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{item.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {item.remarks || "No remarks"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === "good" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {item.status === "good" ? "Good" : "Bad"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );

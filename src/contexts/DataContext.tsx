@@ -57,6 +57,12 @@ interface DataContextType {
   resolveFault: (id: string, type: "op5" | "control") => void;
   deleteFault: (id: string, type: "op5" | "control") => void;
   canEditFault: (fault: OP5Fault | ControlSystemOutage) => boolean;
+  user?: {
+    name?: string;
+    role?: string;
+    region?: string;
+    district?: string;
+  };
 }
 
 // Create the context with a default value
@@ -93,6 +99,7 @@ const DataContext = createContext<DataContextType>({
   resolveFault: () => {},
   deleteFault: () => {},
   canEditFault: () => false,
+  user: undefined,
 });
 
 // Create a provider component
@@ -371,6 +378,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
+  // Mock user for development purposes
+  const [user] = useState({
+    name: "Test User",
+    role: "global_engineer",
+    region: undefined,
+    district: undefined
+  });
+
   return (
     <DataContext.Provider value={{
       regions,
@@ -402,7 +417,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       addControlOutage,
       resolveFault,
       deleteFault,
-      canEditFault
+      canEditFault,
+      user,
     }}>
       {children}
     </DataContext.Provider>
