@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,15 +21,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import { useNavigate } from "react-router-dom";
 
+interface CategoryItem {
+  id: string;
+  name: string;
+  status: ConditionStatus;
+  remarks: string;
+}
+
 interface Category {
   id: string;
   name: string;
-  items: {
-    id: string;
-    name: string;
-    status: ConditionStatus;
-    remarks: string;
-  }[];
+  items: CategoryItem[];
 }
 
 export default function SubstationInspectionPage() {
@@ -120,8 +123,12 @@ export default function SubstationInspectionPage() {
         const region = regions.find(r => r.id === regionId);
         if (!region) return false;
         
-        // Safe check before using the some method
+        // Safe check to make sure region.districts exists before using some
         const regionDistricts = region.districts || [];
+        
+        // Make sure we have a valid array before calling 'some'
+        if (!Array.isArray(regionDistricts)) return false;
+        
         return regionDistricts.some(rd => rd.id === d.id) && (
           user?.role === "district_engineer" 
             ? user.district === d.name 
@@ -209,7 +216,7 @@ export default function SubstationInspectionPage() {
     
     // Create a new SubstationInspection object with id
     const inspectionData: SubstationInspection = {
-      id: uuidv4(), // Generate a new ID
+      id: uuidv4(),
       regionId,
       districtId,
       region: region,
