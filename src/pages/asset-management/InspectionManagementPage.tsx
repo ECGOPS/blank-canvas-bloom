@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +27,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { exportSubstationInspectionToPDF, exportSubstationInspectionToCsv, exportAllSubstationInspectionsToCsv } from "@/utils/pdfExport";
+import { 
+  exportSubstationInspectionToPDF, 
+  exportSubstationInspectionToCsv, 
+  exportAllSubstationInspectionsToCsv 
+} from "@/utils/pdfExport";
 
 export default function InspectionManagementPage() {
   const { user } = useAuth();
