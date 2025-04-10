@@ -1,418 +1,393 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
-import { Layout } from '@/components/layout/Layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/sonner';
-import { ChevronLeft, Save, XCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { SubstationInspection, InspectionCategory, InspectionItem } from '@/lib/types';
-import { exportSubstationInspectionToCsv, exportSubstationInspectionToPDF } from '@/utils/pdfExport';
+} from "@/components/ui/select";
+import { v4 as uuidv4 } from "uuid";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "sonner";
+import { SubstationInspection, ConditionStatus, InspectionItem } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
+import { useNavigate } from "react-router-dom";
 
-const formSchema = z.object({
-  substationNo: z.string().min(2, {
-    message: "Substation number must be at least 2 characters.",
-  }),
-  substationName: z.string().optional(),
-  region: z.string().min(2, {
-    message: "Region is required",
-  }),
-  district: z.string().min(2, {
-    message: "District is required",
-  }),
-  date: z.string(),
-  type: z.enum(["routine", "preventive", "corrective"]),
-  isEmergency: z.boolean().default(false),
-  items: z.array(
-    z.object({
-      name: z.string(),
-      status: z.enum(["good", "bad"]),
-      remarks: z.string().optional(),
-    })
-  ).optional(),
-})
+interface Category {
+  id: string;
+  name: string;
+  items: {
+    id: string;
+    name: string;
+    status: ConditionStatus;
+    remarks: string;
+  }[];
+}
 
 export default function SubstationInspectionPage() {
-  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const { regions, districts, saveInspection } = useData();
   const navigate = useNavigate();
-  const { regions, districts, substationInspections, addSubstationInspection, updateSubstationInspection } = useData();
-
-  const [inspection, setInspection] = useState<SubstationInspection | null>(null);
-  const [categories, setCategories] = useState<InspectionCategory[]>([
+  const [regionId, setRegionId] = useState("");
+  const [districtId, setDistrictId] = useState("");
+  const [formData, setFormData] = useState<Partial<SubstationInspection>>({
+    date: new Date().toISOString().split('T')[0],
+    type: "indoor",
+  });
+  const [categories, setCategories] = useState<Category[]>([
     {
-      id: "category-1",
-      name: "Transformers",
-      category: "Transformers",
+      id: uuidv4(),
+      name: "General Building",
       items: [
-        { id: "item-1", name: "Oil Level", status: "good", remarks: "" },
-        { id: "item-2", name: "Bushings Condition", status: "good", remarks: "" },
+        { id: uuidv4(), name: "Building Structure", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Cleanliness", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Lighting", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Ventilation", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Fire Safety", status: "" as ConditionStatus, remarks: "" },
       ],
     },
     {
-      id: "category-2",
-      name: "Switchgear",
-      category: "Switchgear",
+      id: uuidv4(),
+      name: "Control Equipment",
       items: [
-        { id: "item-3", name: "Breaker Operation", status: "good", remarks: "" },
-        { id: "item-4", name: "Insulation", status: "good", remarks: "" },
+        { id: uuidv4(), name: "Control Panels", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Wiring", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Relays", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Batteries", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Communication Systems", status: "" as ConditionStatus, remarks: "" },
+      ],
+    },
+    {
+      id: uuidv4(),
+      name: "Power Transformer",
+      items: [
+        { id: uuidv4(), name: "Oil Level", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Bushings", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Cooling System", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Insulation", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Load Tap Changer", status: "" as ConditionStatus, remarks: "" },
+      ],
+    },
+    {
+      id: uuidv4(),
+      name: "Outdoor Equipment",
+      items: [
+        { id: uuidv4(), name: "Circuit Breakers", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Disconnect Switches", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Surge Arresters", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Grounding System", status: "" as ConditionStatus, remarks: "" },
+        { id: uuidv4(), name: "Fencing", status: "" as ConditionStatus, remarks: "" },
       ],
     },
   ]);
-  const [isNew, setIsNew] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      substationNo: '',
-      substationName: '',
-      region: '',
-      district: '',
-      date: new Date().toISOString().split('T')[0],
-      type: "routine",
-      isEmergency: false,
-      items: []
-    },
-  })
-
+  // Initialize region and district based on user role
   useEffect(() => {
-    if (id) {
-      setIsLoading(true);
-      const foundInspection = substationInspections.find(insp => insp.id === id);
-      if (foundInspection) {
-        setInspection(foundInspection);
-        form.reset(foundInspection);
-        setCategories(foundInspection.items);
-        setIsNew(false);
-      } else {
-        setIsNew(true);
+    if (user) {
+      if (user.role === "district_engineer" || user.role === "regional_engineer") {
+        const userRegion = regions.find(r => r.name === user.region);
+        if (userRegion) {
+          setRegionId(userRegion.id);
+          setFormData(prev => ({ ...prev, region: userRegion.name }));
+          
+          if (user.role === "district_engineer" && user.district) {
+            const userDistrict = districts.find(d => d.name === user.district);
+            if (userDistrict) {
+              setDistrictId(userDistrict.id);
+              setFormData(prev => ({ ...prev, district: userDistrict.name }));
+            }
+          }
+        }
       }
-      setIsLoading(false);
-    } else {
-      setIsNew(true);
-      setIsLoading(false);
     }
-  }, [id, substationInspections, form]);
+  }, [user, regions, districts]);
 
-  const handleStatusChange = (categoryIndex: number, itemIndex: number, status: "good" | "bad") => {
-    setCategories(prevCategories => {
-      const newCategories = [...prevCategories];
-      newCategories[categoryIndex].items[itemIndex].status = status;
-      return newCategories;
-    });
+  // Filter regions and districts based on user role
+  const filteredRegions = user?.role === "global_engineer"
+    ? regions
+    : regions.filter(r => user?.region ? r.name === user.region : true);
+  
+  const filteredDistricts = regionId
+    ? districts.filter(d => {
+        const region = regions.find(r => r.id === regionId);
+        return region?.districts.some(rd => rd.id === d.id) && (
+          user?.role === "district_engineer" 
+            ? user.district === d.name 
+            : true
+        );
+      })
+    : [];
+
+  // Handle region change
+  const handleRegionChange = (value: string) => {
+    setRegionId(value);
+    const region = regions.find(r => r.id === value);
+    setFormData(prev => ({ ...prev, region: region?.name || "" }));
+    setDistrictId("");
+    setFormData(prev => ({ ...prev, district: "" }));
   };
 
-  const handleRemarksChange = (categoryIndex: number, itemIndex: number, remarks: string) => {
-    setCategories(prevCategories => {
-      const newCategories = [...prevCategories];
-      newCategories[categoryIndex].items[itemIndex].remarks = remarks;
-      return newCategories;
-    });
+  // Handle district change
+  const handleDistrictChange = (value: string) => {
+    setDistrictId(value);
+    const district = districts.find(d => d.id === value);
+    setFormData(prev => ({ ...prev, district: district?.name || "" }));
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    try {
-      const inspectionData: SubstationInspection = {
-        id: id || Date.now().toString(),
-        ...values,
-        items: categories,
-        createdAt: new Date().toISOString(),
-        createdBy: "test"
+  // Handle generic form input changes
+  const handleInputChange = (field: keyof SubstationInspection, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Update item status
+  const updateItemStatus = (categoryIndex: number, itemIndex: number, status: ConditionStatus) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      newCategories[categoryIndex] = {
+        ...newCategories[categoryIndex],
+        items: newCategories[categoryIndex].items.map((item, index) =>
+          index === itemIndex ? { ...item, status } : item
+        ),
       };
-
-      if (isNew) {
-        addSubstationInspection(inspectionData);
-        toast.success("Substation inspection created successfully");
-      } else {
-        updateSubstationInspection(inspectionData);
-        toast.success("Substation inspection updated successfully");
-      }
-
-      navigate("/asset-management/substation-inspection-management");
-    } catch (error) {
-      toast.error("Error saving inspection. Please try again.");
-    }
+      return newCategories;
+    });
   };
 
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="container py-8">
-          <p>Loading inspection data...</p>
-        </div>
-      </Layout>
+  // Update item remarks
+  const updateItemRemarks = (categoryIndex: number, itemIndex: number, remarks: string) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      newCategories[categoryIndex] = {
+        ...newCategories[categoryIndex],
+        items: newCategories[categoryIndex].items.map((item, index) =>
+          index === itemIndex ? { ...item, remarks } : item
+        ),
+      };
+      return newCategories;
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const region = user?.region || formData.region || "";
+    const district = user?.district || formData.district || "";
+    
+    // Find the region and district IDs from the names
+    const regionFound = regions.find(r => r.name === region);
+    const districtFound = districts.find(d => d.name === district);
+    
+    const regionId = regionFound?.id || "";
+    const districtId = districtFound?.id || "";
+    
+    const inspectionItems: InspectionItem[] = categories.flatMap(category =>
+      category.items
+        .filter(item => item.status) // Only include items that have a status selected
+        .map(item => ({
+          id: item.id,
+          category: category.name.toLowerCase(),
+          name: item.name,
+          status: item.status,
+          remarks: item.remarks || "",
+        }))
     );
-  }
+    
+    const inspectionData: Omit<SubstationInspection, "id"> = {
+      regionId,
+      districtId,
+      region: region,
+      district: district,
+      date: formData.date || new Date().toISOString().split('T')[0],
+      substationNo: formData.substationNo || "",
+      substationName: formData.substationName || "",
+      type: formData.type || "indoor",
+      items: inspectionItems,
+      createdBy: user?.name || "Unknown",
+      createdAt: new Date().toISOString(),
+    };
+    
+    const id = saveInspection(inspectionData);
+    toast.success("Inspection saved successfully");
+    navigate("/asset-management/inspection-management");
+  };
 
   return (
     <Layout>
       <div className="container py-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/asset-management/substation-inspection-management")}
-          className="mb-4"
-        >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Back to Inspections
-        </Button>
-
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">
-            {isNew ? "New Substation Inspection" : "Edit Substation Inspection"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isNew ? "Create a new inspection record" : "Update inspection details"}
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Substation Inspection</h1>
+            <p className="text-muted-foreground mt-1">
+              Record a new inspection for a substation
+            </p>
+          </div>
         </div>
 
-        <Card className="bg-white rounded-lg border shadow-sm">
-          <CardHeader>
-            <CardTitle>Substation Details</CardTitle>
-            <CardDescription>Enter the substation details</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="substationNo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Substation Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Substation Number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="substationName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Substation Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Substation Name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="region"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Region</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a region" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {regions.map((region) => (
-                              <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="district"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>District</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a district" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {districts.map((district) => (
-                              <SelectItem key={district.id} value={district.name}>{district.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="routine">Routine</SelectItem>
-                            <SelectItem value="preventive">Preventive</SelectItem>
-                            <SelectItem value="corrective">Corrective</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Inspection Details</CardTitle>
+              <CardDescription>Enter the basic information about the inspection</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="region">Region</Label>
+                  <Select
+                    value={regionId}
+                    onValueChange={handleRegionChange}
+                    disabled={user?.role === "district_engineer" || user?.role === "regional_engineer"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredRegions.map((region) => (
+                        <SelectItem key={region.id} value={region.id}>
+                          {region.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="district">District</Label>
+                  <Select
+                    value={districtId}
+                    onValueChange={handleDistrictChange}
+                    disabled={user?.role === "district_engineer" || !regionId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select district" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredDistricts.map((district) => (
+                        <SelectItem key={district.id} value={district.id}>
+                          {district.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => handleInputChange("date", e.target.value)}
+                    required
                   />
                 </div>
 
-                <div className='flex items-center space-x-2'>
-                  <FormField
-                    control={form.control}
-                    name="isEmergency"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <input
-                            type="checkbox"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormLabel className="text-sm font-normal">
-                          Emergency
-                        </FormLabel>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => handleInputChange("type", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="indoor">Indoor</SelectItem>
+                      <SelectItem value="outdoor">Outdoor</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                <div>
-                  {categories.map((category, categoryIndex) => (
-                    <div key={categoryIndex} className="mb-6">
-                      <h3 className="text-lg font-medium mb-2">{category.name}</h3>
-                      <div className="bg-white rounded-md p-4 border">
-                        <div className="space-y-4">
-                          {category.items.map((item, itemIndex) => (
-                            <ChecklistItem
-                              key={itemIndex}
-                              item={item}
-                              onStatusChange={(status) => handleStatusChange(categoryIndex, itemIndex, status)}
-                              onRemarksChange={(remarks) => handleRemarksChange(categoryIndex, itemIndex, remarks)}
+          {/* Inspection Checklist */}
+          {categories.map((category, categoryIndex) => (
+            <Card key={category.id}>
+              <CardHeader>
+                <CardTitle>{category.name}</CardTitle>
+                <CardDescription>
+                  Record the condition of each item in this category
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                {category.items.map((item, itemIndex) => (
+                  <div key={item.id} className="border rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2 gap-4">
+                      <h3 className="text-base font-medium flex-1">{item.name}</h3>
+                      <div className="flex items-center space-x-6">
+                        <RadioGroup
+                          value={item.status}
+                          onValueChange={(value) => updateItemStatus(categoryIndex, itemIndex, value as "good" | "bad")}
+                          className="flex items-center space-x-4"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem
+                              value="good"
+                              id={`good-${item.id}`}
+                              className="text-green-500 border-green-500 focus:ring-green-500"
                             />
-                          ))}
-                        </div>
+                            <Label
+                              htmlFor={`good-${item.id}`}
+                              className="text-green-600"
+                            >
+                              Good
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem
+                              value="bad"
+                              id={`bad-${item.id}`}
+                              className="text-red-500 border-red-500 focus:ring-red-500"
+                            />
+                            <Label
+                              htmlFor={`bad-${item.id}`}
+                              className="text-red-600"
+                            >
+                              Bad
+                            </Label>
+                          </div>
+                        </RadioGroup>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="mt-2">
+                      <Label htmlFor={`remarks-${item.id}`} className="text-sm">
+                        Remarks
+                      </Label>
+                      <Textarea
+                        id={`remarks-${item.id}`}
+                        value={item.remarks}
+                        onChange={(e) => updateItemRemarks(categoryIndex, itemIndex, e.target.value)}
+                        placeholder="Add any comments or observations"
+                        className="mt-1 h-20"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
 
-                <Button type="submit">
-                  {isNew ? "Create Inspection" : "Update Inspection"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+          <div className="flex justify-end space-x-4">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="lg">
+              Save Inspection
+            </Button>
+          </div>
+        </form>
       </div>
     </Layout>
-  );
-}
-
-interface ChecklistItemProps {
-  item: InspectionItem;
-  onStatusChange: (status: any) => void;
-  onRemarksChange: (remarks: any) => void;
-}
-
-function ChecklistItem({ item, onStatusChange, onRemarksChange }: ChecklistItemProps) {
-  return (
-    <div className="grid grid-cols-3 gap-4 items-center">
-      <div>{item.name}</div>
-      <Select defaultValue={item.status} onValueChange={onStatusChange}>
-        <SelectTrigger>
-          <SelectValue placeholder={item.status} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="good">Good</SelectItem>
-          <SelectItem value="bad">Bad</SelectItem>
-        </SelectContent>
-      </Select>
-      <Textarea
-        placeholder="Remarks"
-        defaultValue={item.remarks}
-        onBlur={(e) => onRemarksChange(e.target.value)}
-      />
-    </div>
   );
 }

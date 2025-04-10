@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useNavigate } from "react-router-dom";
 import {
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubstationInspection } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { Eye, Pencil, Trash2, FileDown, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { formatDate } from "@/utils/calculations";
@@ -28,11 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  exportSubstationInspectionToPDF, 
-  exportSubstationInspectionToCsv, 
-  exportAllSubstationInspectionsToCsv 
-} from "@/utils/pdfExport";
+import { exportSubstationInspectionToPDF, exportSubstationInspectionToCsv, exportAllSubstationInspectionsToCsv } from "@/utils/pdfExport";
 
 export default function InspectionManagementPage() {
   const { user } = useAuth();
@@ -136,13 +132,9 @@ export default function InspectionManagementPage() {
             <TableBody>
               {filteredInspections.length > 0 ? (
                 filteredInspections.map((inspection) => {
-                  // Calculate status summary correctly
-                  const allItems = inspection.items.flatMap(category => 
-                    category.items ? category.items : []
-                  ).filter(item => item !== undefined);
-                  
-                  const goodItems = allItems.filter(item => item && item.status === "good").length;
-                  const badItems = allItems.filter(item => item && item.status === "bad").length;
+                  const allItems = inspection.items.flatMap(category => category.items || []);
+                  const goodItems = allItems.filter(item => item?.status === "good").length;
+                  const badItems = allItems.filter(item => item?.status === "bad").length;
                   
                   return (
                     <TableRow key={inspection.id}>

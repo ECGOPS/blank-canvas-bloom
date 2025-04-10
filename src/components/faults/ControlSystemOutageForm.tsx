@@ -1,137 +1,78 @@
-import React, { useState, useEffect } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from "@/components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/components/ui/use-toast";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { ControlSystemOutage, FaultType } from "@/lib/types";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, InfoIcon, Users, MapPin, Calculator } from "lucide-react";
+import { FaultType } from "@/lib/types";
+import { 
+  calculateDurationHours,
+  calculateUnservedEnergy
+} from "@/utils/calculations";
+import { toast } from "@/components/ui/sonner";
 
-export interface ControlSystemOutageFormProps {
+interface ControlSystemOutageFormProps {
   defaultRegionId?: string;
   defaultDistrictId?: string;
 }
 
-const formSchema = z.object({
-  regionId: z.string().min(1, {
-    message: "You must select a region.",
-  }),
-  districtId: z.string().min(1, {
-    message: "You must select a district.",
-  }),
-  occurrenceDate: z.string().min(1, {
-    message: "Please select the outage date.",
-  }),
-  restorationDate: z.string().optional(),
-  faultType: z.string().min(1, {
-    message: "Please select the fault type.",
-  }),
-  reason: z.string().optional(),
-  controlPanelIndications: z.string().optional(),
-  areaAffected: z.string().optional(),
-  loadMW: z.string().refine(value => !isNaN(Number(value)), {
-    message: "Load must be a number.",
-  }),
-  unservedEnergyMWh: z.string().refine(value => !isNaN(Number(value)), {
-    message: "Unserved energy must be a number.",
-  }),
-  customersAffected: z.object({
-    rural: z.string().refine(value => !isNaN(Number(value)), {
-      message: "Rural must be a number.",
-    }),
-    urban: z.string().refine(value => !isNaN(Number(value)), {
-      message: "Urban must be a number.",
-    }),
-    metro: z.string().refine(value => !isNaN(Number(value)), {
-      message: "Metro must be a number.",
-    }),
-  }),
-});
-
-export function ControlSystemOutageForm({ defaultRegionId, defaultDistrictId }: ControlSystemOutageFormProps) {
-  const { user } = useAuth();
+export function ControlSystemOutageForm({ defaultRegionId = "", defaultDistrictId = "" }: ControlSystemOutageFormProps) {
   const { regions, districts, addControlOutage } = useData();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [regionId, setRegionId] = useState(defaultRegionId || "");
-  const [districtId, setDistrictId] = useState(defaultDistrictId || "");
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      regionId: "",
-      districtId: "",
-      occurrenceDate: new Date().toISOString().split('T')[0],
-      restorationDate: "",
-      faultType: "Unplanned",
-      reason: "",
-      controlPanelIndications: "",
-      areaAffected: "",
-      loadMW: "0",
-      unservedEnergyMWh: "0",
-      customersAffected: {
-        rural: "0",
-        urban: "0",
-        metro: "0",
-      },
-    },
-  });
-
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [regionId, setRegionId] = useState<string>(defaultRegionId);
+  const [districtId, setDistrictId] = useState<string>(defaultDistrictId);
+  const [occurrenceDate, setOccurrenceDate] = useState<string>("");
+  const [faultType, setFaultType] = useState<FaultType>("Unplanned");
+  const [ruralAffected, setRuralAffected] = useState<number>(0);
+  const [urbanAffected, setUrbanAffected] = useState<number>(0);
+  const [metroAffected, setMetroAffected] = useState<number>(0);
+  const [restorationDate, setRestorationDate] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const [indications, setIndications] = useState<string>("");
+  const [areaAffected, setAreaAffected] = useState<string>("");
+  const [loadMW, setLoadMW] = useState<number>(0);
+  
+  // Derived values
+  const [durationHours, setDurationHours] = useState<number | null>(null);
+  const [unservedEnergyMWh, setUnservedEnergyMWh] = useState<number | null>(null);
+  
+  // Update region and district when props change
   useEffect(() => {
     if (defaultRegionId) {
       setRegionId(defaultRegionId);
-      form.setValue("regionId", defaultRegionId);
     }
     
-    if (defaultDistrictId && defaultRegionId) {
+    if (defaultDistrictId) {
       setDistrictId(defaultDistrictId);
-      form.setValue("districtId", defaultDistrictId);
     }
-    
-    if (user) {
-      if (user.role === "district_engineer" || user.role === "regional_engineer") {
-        const userRegion = regions.find(r => r.name === user.region);
-        if (userRegion) {
-          setRegionId(userRegion.id);
-          form.setValue("regionId", userRegion.id);
-          
-          if (user.role === "district_engineer" && user.district) {
-            const userDistrict = districts.find(d => d.name === user.district);
-            if (userDistrict) {
-              setDistrictId(userDistrict.id);
-              form.setValue("districtId", userDistrict.id);
-            }
-          }
-        }
-      }
-    }
-  }, [user, regions, districts, form, defaultRegionId, defaultDistrictId]);
-
-  const filteredRegions = user?.role === "global_engineer"
-    ? regions
+  }, [defaultRegionId, defaultDistrictId]);
+  
+  // Filter regions and districts based on user role
+  const filteredRegions = user?.role === "global_engineer" 
+    ? regions 
     : regions.filter(r => user?.region ? r.name === user.region : true);
   
   const filteredDistricts = regionId
@@ -144,327 +85,325 @@ export function ControlSystemOutageForm({ defaultRegionId, defaultDistrictId }: 
         );
       })
     : [];
-
-  const handleRegionChange = (value: string) => {
-    setRegionId(value);
-    form.setValue("regionId", value);
-    setDistrictId("");
-    form.setValue("districtId", "");
-  };
-
-  const handleDistrictChange = (value: string) => {
-    setDistrictId(value);
-    form.setValue("districtId", value);
-  };
-
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const outageData: Omit<ControlSystemOutage, "id" | "status"> = {
-      regionId: values.regionId,
-      districtId: values.districtId,
-      occurrenceDate: values.occurrenceDate,
-      faultType: values.faultType as FaultType,
-      restorationDate: values.restorationDate || "",
-      customersAffected: {
-        rural: Number(values.customersAffected.rural) || 0,
-        urban: Number(values.customersAffected.urban) || 0,
-        metro: Number(values.customersAffected.metro) || 0
-      },
-      reason: values.reason || "",
-      controlPanelIndications: values.controlPanelIndications || "",
-      areaAffected: values.areaAffected || "",
-      loadMW: Number(values.loadMW) || 0,
-      unservedEnergyMWh: Number(values.unservedEnergyMWh) || 0,
-      createdBy: user?.name || "Anonymous",
-      createdAt: new Date().toISOString()
-    };
+  
+  // Calculate metrics when dates or load changes
+  useEffect(() => {
+    if (occurrenceDate && restorationDate && loadMW > 0) {
+      // Ensure restoration date is after occurrence date
+      if (new Date(restorationDate) <= new Date(occurrenceDate)) {
+        toast.error("Restoration date must be after occurrence date");
+        return;
+      }
+      
+      const duration = calculateDurationHours(occurrenceDate, restorationDate);
+      setDurationHours(duration);
+      
+      const unservedEnergy = calculateUnservedEnergy(loadMW, duration);
+      setUnservedEnergyMWh(unservedEnergy);
+    }
+  }, [occurrenceDate, restorationDate, loadMW]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    addControlOutage(outageData);
-    navigate("/fault-reporting");
-  }
-
+    if (!occurrenceDate || !faultType || !regionId || !districtId || !loadMW) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    
+    // Validate that restoration date is after occurrence date
+    if (restorationDate && new Date(restorationDate) <= new Date(occurrenceDate)) {
+      toast.error("Restoration date must be after occurrence date");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      addControlOutage({
+        regionId,
+        districtId,
+        occurrenceDate,
+        faultType,
+        restorationDate: restorationDate || new Date().toISOString(), // Use current time if not set
+        customersAffected: {
+          rural: ruralAffected,
+          urban: urbanAffected,
+          metro: metroAffected
+        },
+        reason,
+        controlPanelIndications: indications,
+        areaAffected,
+        loadMW,
+        unservedEnergyMWh: unservedEnergyMWh || 0
+      });
+      
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error submitting control system outage:", error);
+      toast.error("Failed to submit outage report");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Report Control System Outage</CardTitle>
+    <Card className="border-0 shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0">
+        <CardTitle className="text-2xl font-serif">Control System Outage Report</CardTitle>
         <CardDescription>
-          Submit a new control system outage report
+          Report a control system outage with detailed information
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="regionId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Region</FormLabel>
-                    <Select
-                      onValueChange={handleRegionChange}
-                      defaultValue={field.value}
-                      disabled={user?.role === "district_engineer" || user?.role === "regional_engineer"}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a region" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filteredRegions.map((region) => (
-                          <SelectItem key={region.id} value={region.id}>
-                            {region.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Please select the region where the outage occurred.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="districtId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>District</FormLabel>
-                    <Select
-                      onValueChange={handleDistrictChange}
-                      defaultValue={field.value}
-                      disabled={user?.role === "district_engineer" || !regionId}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a district" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filteredDistricts.map((district) => (
-                          <SelectItem key={district.id} value={district.id}>
-                            {district.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Please select the district where the outage occurred.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+      <CardContent className="px-0">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <Label htmlFor="region" className="text-base font-medium">Region</Label>
+              <Select 
+                value={regionId} 
+                onValueChange={setRegionId}
+                disabled={user?.role === "district_engineer" || user?.role === "regional_engineer"}
+                required
+              >
+                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
+                  <SelectValue placeholder="Select region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredRegions.map(region => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-3">
+              <Label htmlFor="district" className="text-base font-medium">District</Label>
+              <Select 
+                value={districtId} 
+                onValueChange={setDistrictId}
+                disabled={user?.role === "district_engineer" || !regionId}
+                required
+              >
+                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
+                  <SelectValue placeholder="Select district" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regionId && districts
+                    .filter(d => d.regionId === regionId)
+                    .map(district => (
+                      <SelectItem key={district.id} value={district.id}>
+                        {district.name}
+                      </SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <Label htmlFor="occurrenceDate" className="text-base font-medium">Outage Occurrence Date & Time</Label>
+              <Input
+                id="occurrenceDate"
+                type="datetime-local"
+                value={occurrenceDate}
+                onChange={(e) => setOccurrenceDate(e.target.value)}
+                required
+                className="h-12 text-base bg-background/50 border-muted"
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="occurrenceDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Outage Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Please enter the date when the outage occurred.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="restorationDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Restoration Date (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Please enter the date when the system was restored.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="faultType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fault Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a fault type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Planned">Planned</SelectItem>
-                      <SelectItem value="Unplanned">Unplanned</SelectItem>
-                      <SelectItem value="Emergency">Emergency</SelectItem>
-                      <SelectItem value="Load Shedding">Load Shedding</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Please select the type of fault.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="reason"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reason (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="text" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Please provide the reason for the outage.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="controlPanelIndications"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Control Panel Indications (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Control panel indications"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Please provide any relevant control panel indications.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="areaAffected"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Area Affected (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="text" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Please specify the area affected by the outage.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="loadMW"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Load (MW)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0.0" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Please enter the load in megawatts.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="unservedEnergyMWh"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unserved Energy (MWh)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0.0" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Please enter the unserved energy in megawatt-hours.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            
+            <div className="space-y-3">
+              <Label htmlFor="faultType" className="text-base font-medium">Type of Fault</Label>
+              <Select value={faultType} onValueChange={(value) => setFaultType(value as FaultType)} required>
+                <SelectTrigger className="h-12 text-base bg-background/50 border-muted">
+                  <SelectValue placeholder="Select fault type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Planned">Planned</SelectItem>
+                  <SelectItem value="Unplanned">Unplanned</SelectItem>
+                  <SelectItem value="Emergency">Emergency</SelectItem>
+                  <SelectItem value="Load Shedding">Load Shedding</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          
+          <Tabs defaultValue="affected" className="w-full">
+            <TabsList className="w-full grid grid-cols-3 bg-muted/50 p-1">
+              <TabsTrigger value="affected" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Users className="h-4 w-4 mr-2" />
+                Affected Customers
+              </TabsTrigger>
+              <TabsTrigger value="details" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <MapPin className="h-4 w-4 mr-2" />
+                Outage Details
+              </TabsTrigger>
+              <TabsTrigger value="calculations" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Calculator className="h-4 w-4 mr-2" />
+                Calculations
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="affected" className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="ruralAffected" className="font-medium flex items-center">
+                    Rural Customers Affected
+                    <InfoIcon className="h-4 w-4 ml-1 text-muted-foreground" />
+                  </Label>
+                  <Input
+                    id="ruralAffected"
+                    type="number"
+                    min="0"
+                    value={ruralAffected}
+                    onChange={(e) => setRuralAffected(parseInt(e.target.value) || 0)}
+                    className="bg-background/50 border-muted"
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="urbanAffected" className="font-medium flex items-center">
+                    Urban Customers Affected
+                    <InfoIcon className="h-4 w-4 ml-1 text-muted-foreground" />
+                  </Label>
+                  <Input
+                    id="urbanAffected"
+                    type="number"
+                    min="0"
+                    value={urbanAffected}
+                    onChange={(e) => setUrbanAffected(parseInt(e.target.value) || 0)}
+                    className="bg-background/50 border-muted"
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="metroAffected" className="font-medium flex items-center">
+                    Metro Customers Affected
+                    <InfoIcon className="h-4 w-4 ml-1 text-muted-foreground" />
+                  </Label>
+                  <Input
+                    id="metroAffected"
+                    type="number"
+                    min="0"
+                    value={metroAffected}
+                    onChange={(e) => setMetroAffected(parseInt(e.target.value) || 0)}
+                    className="bg-background/50 border-muted"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="details" className="space-y-6 pt-6">
+              <div className="space-y-3">
+                <Label htmlFor="reason" className="text-base font-medium">Reason for Outage</Label>
+                <Textarea
+                  id="reason"
+                  placeholder="Describe the reason for the outage"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={2}
+                  className="bg-background/50 border-muted"
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <Label htmlFor="indications" className="text-base font-medium">Indications on Control Panel</Label>
+                <Textarea
+                  id="indications"
+                  placeholder="Describe the indications observed on the control panel"
+                  value={indications}
+                  onChange={(e) => setIndications(e.target.value)}
+                  rows={2}
+                  className="bg-background/50 border-muted"
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <Label htmlFor="areaAffected" className="text-base font-medium">Area Affected</Label>
+                <Input
+                  id="areaAffected"
+                  type="text"
+                  placeholder="E.g., North Sector, Industrial Zone"
+                  value={areaAffected}
+                  onChange={(e) => setAreaAffected(e.target.value)}
+                  className="h-12 text-base bg-background/50 border-muted"
+                />
+              </div>
+              
+              <div className="space-y-3">
+                <Label htmlFor="loadMW" className="text-base font-medium">Load in MW</Label>
+                <Input
+                  id="loadMW"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="Load in megawatts"
+                  value={loadMW}
+                  onChange={(e) => setLoadMW(parseFloat(e.target.value) || 0)}
+                  required
+                  className="h-12 text-base bg-background/50 border-muted"
+                />
+              </div>
 
-            <Separator />
-
-            <p className="text-sm font-medium">Customers Affected</p>
-            <FormDescription>
-              Please enter the number of customers affected in each area.
-            </FormDescription>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="customersAffected.rural"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rural</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="customersAffected.urban"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Urban</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="customersAffected.metro"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Metro</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <Button type="submit">Submit Report</Button>
-          </form>
-        </Form>
+              {/* Moved Restoration Date & Time to details tab */}
+              <div className="space-y-3">
+                <Label htmlFor="restorationDate" className="text-base font-medium">Restoration Date & Time</Label>
+                <Input
+                  id="restorationDate"
+                  type="datetime-local"
+                  value={restorationDate}
+                  onChange={(e) => setRestorationDate(e.target.value)}
+                  className="h-12 text-base bg-background/50 border-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty if the outage is still active
+                </p>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="calculations" className="pt-6">
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="durationHours" className="font-medium">Duration of Outage</Label>
+                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
+                      {durationHours !== null 
+                        ? `${durationHours.toFixed(2)} hours` 
+                        : "Not calculated yet"}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <Label htmlFor="unservedEnergyMWh" className="font-medium">Unserved Energy (MWh)</Label>
+                    <div className="bg-muted/50 rounded-md p-3 text-sm border border-muted">
+                      {unservedEnergyMWh !== null 
+                        ? `${unservedEnergyMWh.toFixed(2)} MWh` 
+                        : "Not calculated yet"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </form>
       </CardContent>
+      <CardFooter className="px-0 pt-4">
+        <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90">
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            "Submit Outage Report"
+          )}
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

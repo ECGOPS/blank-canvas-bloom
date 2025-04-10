@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useData } from "@/contexts/DataContext";
@@ -131,7 +130,11 @@ export default function VITInspectionDetailsPage() {
                       <InspectionRecord
                         key={inspection.id}
                         inspection={inspection}
+                        asset={asset}
+                        onEdit={handleEdit}
                         onDelete={handleDelete}
+                        getRegionName={getRegionName}
+                        getDistrictName={getDistrictName}
                       />
                     ))}
                   </div>

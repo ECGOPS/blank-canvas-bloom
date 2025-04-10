@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,10 +30,10 @@ export function SignupForm() {
   }));
 
   const districtOptions = region 
-    ? districts.filter(d => d.regionId === region).map(d => ({
+    ? regions.find(r => r.id === region)?.districts.map(d => ({
         value: d.id,
         label: d.name
-      }))
+      })) || []
     : [];
 
   const handleRoleChange = (value: string) => {
