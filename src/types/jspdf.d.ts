@@ -19,15 +19,22 @@ declare module "jspdf" {
         cellPadding?: number;
         fontSize?: number;
         overflow?: string;
+        lineWidth?: number;
+        lineColor?: number[];
       };
       columnStyles?: {
         [key: number]: {
           cellWidth?: number;
+          fillColor?: number[];
         };
       };
       margin?: {
         left?: number;
+        top?: number;
+        right?: number;
+        bottom?: number;
       };
+      didDrawPage?: (data: any) => void;
     }) => jsPDF;
     setPage: (pageNumber: number) => jsPDF;
   }

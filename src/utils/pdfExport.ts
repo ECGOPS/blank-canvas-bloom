@@ -1,4 +1,3 @@
-
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { VITAsset, VITInspectionChecklist, SubstationInspection, InspectionItem } from "@/lib/types";
 import { formatDate } from "@/utils/calculations";
@@ -565,225 +564,179 @@ export const exportInspectionToPDF = async (inspection: VITInspectionChecklist, 
  * Generate comprehensive PDF report for Substation inspection
  */
 export const exportSubstationInspectionToPDF = async (inspection: SubstationInspection) => {
-  const doc = await PDFDocument.create();
-  const page = doc.addPage([595.28, 841.89]); // A4 size
-  const { width, height } = page.getSize();
-  const fontSize = 12;
-  const lineHeight = fontSize * 1.5;
-  let y = height - 50;
-
-  // Embed font once for reuse
-  const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-
-  // Add title
-  page.drawText("Substation Inspection Report", {
-    x: 50,
-    y,
-    size: 16,
-    color: rgb(0, 0, 0),
-    font: boldFont,
-  });
-  y -= lineHeight * 2;
-
+  // Create PDF with jsPDF and autotable for a more professional look
+  const doc = new jsPDF();
+  
+  // Add header with logo and title
+  doc.setFillColor(0, 83, 156);
+  doc.rect(0, 0, 210, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.text("Substation Inspection Report", 105, 12, { align: "center" });
+  
   // Add inspection details
-  page.drawText(`Substation: ${inspection.substationNo}`, {
-    x: 50,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`Region: ${inspection.region}`, {
-    x: 50,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`District: ${inspection.district}`, {
-    x: 50,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`Date: ${formatDate(inspection.date)}`, {
-    x: 50,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`Type: ${inspection.type}`, {
-    x: 50,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight * 2;
-
-  // Add inspection items by category
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(12);
+  
+  let startY = 30;
+  
+  // Inspection summary box
+  doc.setDrawColor(220, 220, 220);
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(10, startY, 190, 40, 2, 2, 'FD');
+  
+  doc.setFontSize(11);
+  doc.text(`Substation No: ${inspection.substationNo}`, 15, startY + 8);
+  doc.text(`Substation Name: ${inspection.substationName || "N/A"}`, 105, startY + 8);
+  doc.text(`Region: ${inspection.region}`, 15, startY + 16);
+  doc.text(`District: ${inspection.district}`, 105, startY + 16);
+  doc.text(`Date: ${formatDate(inspection.date)}`, 15, startY + 24);
+  doc.text(`Type: ${inspection.type.toUpperCase()}`, 105, startY + 24);
+  doc.text(`Inspected By: ${inspection.createdBy}`, 15, startY + 32);
+  
+  startY = 80;
+  
+  // Calculate summary statistics for inspection items
+  const allItems = inspection.items.flatMap(category => category.items || []);
+  const totalItems = allItems.length;
+  const goodItems = allItems.filter(item => item?.status === "good").length;
+  const badItems = totalItems - goodItems;
+  const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
+  
+  // Add summary statistics in a visually appealing format
+  doc.setFillColor(0, 83, 156);
+  doc.rect(10, startY, 190, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.text("Inspection Summary", 105, startY + 6, { align: "center" });
+  
+  startY += 15;
+  
+  // Create summary grid
+  doc.setFillColor(245, 245, 245);
+  doc.rect(10, startY, 45, 20, 'F');
+  doc.rect(57, startY, 45, 20, 'F');
+  doc.rect(104, startY, 45, 20, 'F');
+  doc.rect(151, startY, 49, 20, 'F');
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(10, startY, 45, 20, 'S');
+  doc.rect(57, startY, 45, 20, 'S');
+  doc.rect(104, startY, 45, 20, 'S');
+  doc.rect(151, startY, 49, 20, 'S');
+  
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.text("Total Items", 32, startY + 6, { align: "center" });
+  doc.text("Good Condition", 79, startY + 6, { align: "center" });
+  doc.text("Needs Attention", 126, startY + 6, { align: "center" });
+  doc.text("Overall Condition", 175, startY + 6, { align: "center" });
+  
+  doc.setFontSize(12);
+  doc.text(`${totalItems}`, 32, startY + 15, { align: "center" });
+  
+  doc.setTextColor(0, 128, 0);
+  doc.text(`${goodItems}`, 79, startY + 15, { align: "center" });
+  
+  doc.setTextColor(220, 0, 0);
+  doc.text(`${badItems}`, 126, startY + 15, { align: "center" });
+  
+  // Set color based on condition
+  if (percentageGood >= 90) {
+    doc.setTextColor(0, 128, 0);
+  } else if (percentageGood >= 75) {
+    doc.setTextColor(0, 100, 0);
+  } else if (percentageGood >= 60) {
+    doc.setTextColor(255, 140, 0);
+  } else {
+    doc.setTextColor(220, 0, 0);
+  }
+  
+  doc.text(
+    `${percentageGood >= 90 ? "Excellent" : 
+    percentageGood >= 75 ? "Good" : 
+    percentageGood >= 60 ? "Fair" : "Poor"}`,
+    175, startY + 15, { align: "center" }
+  );
+  
+  startY += 30;
+  
+  // Add inspection items by category using auto-table for better formatting
   if (inspection.items && Array.isArray(inspection.items)) {
     for (const category of inspection.items) {
       if (!category || !category.items) continue;
-
-      // Check if we need a new page
-      if (y < 100) {
-        const newPage = doc.addPage([595.28, 841.89]);
-        y = height - 50;
-      }
-
+      
       // Add category header
-      page.drawText(category.category, {
-        x: 50,
-        y,
-        size: fontSize,
-        color: rgb(0, 0, 0),
-        font: boldFont,
+      doc.setFillColor(240, 240, 240);
+      doc.setDrawColor(200, 200, 200);
+      doc.roundedRect(10, startY, 190, 8, 1, 1, 'FD');
+      
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text(category.category, 15, startY + 5.5);
+      
+      startY += 10;
+      
+      // Prepare table data
+      const tableBody = category.items.map(item => [
+        item.status === "good" ? "✓" : "✗",
+        item.name,
+        item.status.toUpperCase(),
+        item.remarks || ""
+      ]);
+      
+      // Add table using autotable for better formatting
+      doc.autoTable({
+        startY: startY,
+        head: [["Status", "Item", "Condition", "Remarks"]],
+        body: tableBody,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: [0, 0, 0],
+        },
+        styles: {
+          cellPadding: 2,
+          fontSize: 9,
+          lineWidth: 0.1,
+          lineColor: [200, 200, 200]
+        },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 65 },
+          2: { cellWidth: 25 }
+        },
+        margin: { left: 10 }
       });
-      y -= lineHeight;
-
-      // Add items in this category
-      for (const item of category.items) {
-        if (!item) continue;
-
-        // Check if we need a new page
-        if (y < 100) {
-          const newPage = doc.addPage([595.28, 841.89]);
-          y = height - 50;
-        }
-
-        const statusText = item.status === "good" ? "✓" : "✗";
-        const statusColor = item.status === "good" ? rgb(0, 0.5, 0) : rgb(0.8, 0, 0);
-        
-        // Draw status symbol
-        page.drawText(statusText, {
-          x: 70,
-          y,
-          size: fontSize,
-          color: statusColor,
-        });
-
-        // Draw item name
-        page.drawText(item.name, {
-          x: 90,
-          y,
-          size: fontSize,
-          color: rgb(0, 0, 0),
-        });
-        y -= lineHeight;
-
-        if (item.remarks) {
-          // Check if we need a new page for remarks
-          if (y < 100) {
-            const newPage = doc.addPage([595.28, 841.89]);
-            y = height - 50;
-          }
-
-          page.drawText(`   Remarks: ${item.remarks}`, {
-            x: 90,
-            y,
-            size: fontSize,
-            color: rgb(0, 0, 0),
-          });
-          y -= lineHeight;
-        }
+      
+      startY = doc.lastAutoTable?.finalY || startY + 10;
+      startY += 10;
+      
+      // Add page if needed
+      if (startY > 260) {
+        doc.addPage();
+        startY = 20;
       }
-      y -= lineHeight;
     }
   }
-
-  // Add summary section
-  if (y < 150) {
-    const newPage = doc.addPage([595.28, 841.89]);
-    y = height - 50;
+  
+  // Add footer with timestamp and page numbers
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    
+    // Add footer line
+    doc.setDrawColor(220, 220, 220);
+    doc.line(10, 280, 200, 280);
+    
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 12, 287);
+    doc.text(`Page ${i} of ${totalPages}`, 198, 287, { align: "right" });
   }
-
-  // Calculate summary statistics
-  const totalItems = inspection.items.reduce((count, category) => 
-    count + (category.items?.length || 0), 0);
-  const goodItems = inspection.items.reduce((count, category) => 
-    count + (category.items?.filter(item => item.status === "good").length || 0), 0);
-  const badItems = totalItems - goodItems;
-  const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
-
-  // Add summary header
-  page.drawText("Inspection Summary", {
-    x: 50,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-    font: boldFont,
-  });
-  y -= lineHeight * 2;
-
-  // Add summary details
-  page.drawText(`Total Items Checked: ${totalItems}`, {
-    x: 70,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`Items in Good Condition: ${goodItems}`, {
-    x: 70,
-    y,
-    size: fontSize,
-    color: rgb(0, 0.5, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`Items Requiring Attention: ${badItems}`, {
-    x: 70,
-    y,
-    size: fontSize,
-    color: rgb(0.8, 0, 0),
-  });
-  y -= lineHeight;
-
-  page.drawText(`Overall Condition: ${percentageGood >= 90 ? "Excellent" : 
-    percentageGood >= 75 ? "Good" : 
-    percentageGood >= 60 ? "Fair" : "Poor"}`, {
-    x: 70,
-    y,
-    size: fontSize,
-    color: rgb(0, 0, 0),
-    font: boldFont,
-  });
-
-  // Add timestamp and page numbers
-  const totalPages = doc.getPages().length;
-  for (let i = 0; i < totalPages; i++) {
-    const currentPage = doc.getPage(i);
-    const { width, height } = currentPage.getSize();
-    currentPage.drawText(`Generated: ${new Date().toLocaleString()}`, {
-      x: 50,
-      y: 30,
-      size: 8,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-    currentPage.drawText(`Page ${i + 1} of ${totalPages}`, {
-      x: width - 100,
-      y: 30,
-      size: 8,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-  }
-
+  
   // Save the PDF
-  const pdfBytes = await doc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `substation-inspection-${formatDate(inspection.date)}.pdf`;
-  link.click();
-  URL.revokeObjectURL(url);
+  doc.save(`substation-inspection-${inspection.substationNo}-${formatDate(inspection.date)}.pdf`);
 };
 
 /**
@@ -851,81 +804,4 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
   const url = URL.createObjectURL(blob);
   
   link.setAttribute("href", url);
-  link.setAttribute("download", `substation-inspection-${inspection.substationNo}-${formatDate(inspection.date)}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-/**
- * Export all substation inspections to a single CSV file
- */
-export const exportAllSubstationInspectionsToCsv = (inspections: SubstationInspection[]) => {
-  if (!inspections || inspections.length === 0) return;
-  
-  // Create header row
-  const headers = [
-    "ID", 
-    "Date", 
-    "Substation No", 
-    "Substation Name",
-    "Region", 
-    "District", 
-    "Type", 
-    "Total Items",
-    "Good Items",
-    "Items Needing Attention",
-    "Overall Condition",
-    "Created By", 
-    "Created At"
-  ];
-  
-  // Create CSV rows
-  let csvRows = [headers.join(",")];
-  
-  // Add data rows
-  inspections.forEach(inspection => {
-    const allItems = inspection.items.flatMap(category => category.items || []);
-    const totalItems = allItems.length;
-    const goodItems = allItems.filter(item => item?.status === "good").length;
-    const badItems = totalItems - goodItems;
-    const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
-    const overallCondition = percentageGood >= 90 ? "Excellent" : 
-                            percentageGood >= 75 ? "Good" : 
-                            percentageGood >= 60 ? "Fair" : "Poor";
-    
-    const row = [
-      inspection.id,
-      formatDate(inspection.date),
-      inspection.substationNo,
-      inspection.substationName || "",
-      inspection.region,
-      inspection.district,
-      inspection.type,
-      totalItems,
-      goodItems,
-      badItems,
-      overallCondition,
-      inspection.createdBy || "",
-      inspection.createdAt ? new Date(inspection.createdAt).toLocaleString() : ""
-    ];
-    
-    csvRows.push(row.map(value => `"${value}"`).join(","));
-  });
-  
-  // Join rows and create download
-  const csvContent = csvRows.join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute("href", url);
-  link.setAttribute("download", `all-substation-inspections-${new Date().toISOString().slice(0,10)}.csv`);
-  link.style.visibility = "hidden";
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+  link.setAttribute("download", `substation-inspection-${inspection.substationNo
