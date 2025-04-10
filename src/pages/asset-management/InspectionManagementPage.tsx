@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubstationInspection } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/sonner";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, FileDown, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { formatDate } from "@/utils/calculations";
 import {
@@ -27,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { exportSubstationInspectionToPDF, exportSubstationInspectionToCsv, exportAllSubstationInspectionsToCsv } from "@/utils/pdfExport";
 
 export default function InspectionManagementPage() {
   const { user } = useAuth();
@@ -56,12 +58,40 @@ export default function InspectionManagementPage() {
     }
   };
 
+  const handleExportPdf = (inspection: SubstationInspection) => {
+    exportSubstationInspectionToPDF(inspection);
+    toast.success("PDF export started");
+  };
+
+  const handleExportCsv = (inspection: SubstationInspection) => {
+    exportSubstationInspectionToCsv(inspection);
+    toast.success("CSV export started");
+  };
+
+  const handleExportAllToCsv = () => {
+    if (filteredInspections.length === 0) {
+      toast.error("No inspections to export");
+      return;
+    }
+    exportAllSubstationInspectionsToCsv(filteredInspections);
+    toast.success("CSV export of all inspections started");
+  };
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Substation Inspections</h1>
           <div className="flex space-x-4">
+            <Button 
+              onClick={handleExportAllToCsv}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={filteredInspections.length === 0}
+            >
+              <FileText className="h-4 w-4" />
+              Export All to CSV
+            </Button>
             <Button 
               onClick={() => navigate("/asset-management/substation-inspection")}
               variant="default"
@@ -160,6 +190,15 @@ export default function InspectionManagementPage() {
                             <DropdownMenuItem onClick={() => handleEdit(inspection.id)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleExportPdf(inspection)}>
+                              <FileDown className="mr-2 h-4 w-4" />
+                              Export to PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExportCsv(inspection)}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Export to CSV
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 

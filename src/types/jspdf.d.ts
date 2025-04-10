@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 
 declare module "jspdf" {
@@ -28,6 +29,7 @@ declare module "jspdf" {
         left?: number;
       };
     }) => jsPDF;
+    setPage: (pageNumber: number) => jsPDF;
   }
 }
 

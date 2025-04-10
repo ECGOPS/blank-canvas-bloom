@@ -1,7 +1,9 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { VITAsset, VITInspectionChecklist, SubstationInspection } from "@/lib/types";
+import { VITAsset, VITInspectionChecklist, SubstationInspection, InspectionItem } from "@/lib/types";
 import { formatDate } from "@/utils/calculations";
 import { format } from 'date-fns';
+import { jsPDF } from "jspdf";
+import 'jspdf-autotable';
 
 // Add type declaration for jsPDF with autotable extensions
 declare module "jspdf" {
@@ -10,18 +12,6 @@ declare module "jspdf" {
       finalY?: number;
     };
     autoTable: (options: any) => jsPDF;
-    internal: {
-      events: PubSub;
-      scaleFactor: number;
-      pageSize: {
-        width: number;
-        getWidth: () => number;
-        height: number;
-        getHeight: () => number;
-      };
-      pages: number[];
-      getEncryptor: (objectId: number) => (data: string) => string;
-    };
     setPage: (pageNumber: number) => jsPDF;
   }
 }
@@ -794,3 +784,108 @@ export const exportSubstationInspectionToPDF = async (inspection: SubstationInsp
   link.click();
   URL.revokeObjectURL(url);
 };
+
+/**
+ * Export a single substation inspection to CSV format
+ */
+export const exportSubstationInspectionToCsv = (inspection: SubstationInspection) => {
+  // Create basic info rows
+  const basicInfo = [
+    ["Substation Number", inspection.substationNo],
+    ["Substation Name", inspection.substationName || ""],
+    ["Region", inspection.region],
+    ["District", inspection.district],
+    ["Date", formatDate(inspection.date)],
+    ["Type", inspection.type],
+    ["Created By", inspection.createdBy],
+    ["Created At", new Date(inspection.createdAt).toLocaleString()]
+  ];
+
+  // Create header rows for each inspection category
+  let csvRows = [
+    ["Inspection Report - Substation " + inspection.substationNo],
+    ["Basic Information:"],
+    ...basicInfo.map(row => `"${row[0]}","${row[1]}"`),
+    [""], // Empty row for separation
+    ["Inspection Items:"],
+    ["Category", "Item", "Status", "Remarks"]
+  ];
+
+  // Add inspection items
+  if (inspection.items && Array.isArray(inspection.items)) {
+    inspection.items.forEach(category => {
+      if (!category || !category.items) return;
+      
+      category.items.forEach(item => {
+        if (!item) return;
+        csvRows.push(`"${category.category}","${item.name}","${item.status}","${item.remarks || ''}"`);
+      });
+    });
+  }
+
+  // Add summary
+  const allItems = inspection.items.flatMap(category => category.items || []);
+  const totalItems = allItems.length;
+  const goodItems = allItems.filter(item => item?.status === "good").length;
+  const badItems = totalItems - goodItems;
+  const percentageGood = totalItems > 0 ? (goodItems / totalItems) * 100 : 0;
+  
+  csvRows.push(
+    [""], // Empty row for separation
+    ["Summary:"],
+    [`"Total Items","${totalItems}"`],
+    [`"Good Condition","${goodItems}"`],
+    [`"Needs Attention","${badItems}"`],
+    [`"Overall Condition","${percentageGood >= 90 ? "Excellent" : 
+      percentageGood >= 75 ? "Good" : 
+      percentageGood >= 60 ? "Fair" : "Poor"}"`]
+  );
+
+  // Join all rows
+  const csvContent = csvRows.join("\n");
+  
+  // Create and trigger download
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `substation-inspection-${inspection.substationNo}-${formatDate(inspection.date)}.csv`);
+  link.style.visibility = "hidden";
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+/**
+ * Export all substation inspections to a single CSV file
+ */
+export const exportAllSubstationInspectionsToCsv = (inspections: SubstationInspection[]) => {
+  if (!inspections || inspections.length === 0) return;
+  
+  // Create header row
+  const headers = [
+    "ID", 
+    "Date", 
+    "Substation No", 
+    "Substation Name",
+    "Region", 
+    "District", 
+    "Type", 
+    "Total Items",
+    "Good Items",
+    "Items Needing Attention",
+    "Overall Condition",
+    "Created By", 
+    "Created At"
+  ];
+  
+  // Create CSV rows
+  let csvRows = [headers.join(",")];
+  
+  // Add data rows
+  inspections.forEach(inspection => {
+    const allItems = inspection.items.flatMap(category => category.items || []);
+    const totalItems = allItems.length;
+    const goodItems = allItems.filter(item => item?.status === "good").

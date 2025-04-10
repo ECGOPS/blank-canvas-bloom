@@ -1,3 +1,4 @@
+
 import { InspectionItem } from './types';
 
 export interface FeederLeg {
@@ -81,13 +82,13 @@ export type SubstationInspection = {
   id: string;
   regionId: string;
   districtId: string;
-  inspectionDate: string;
-  inspectedBy: string;
-  generalBuilding: InspectionItem[];
-  controlEquipment: InspectionItem[];
-  powerTransformer: InspectionItem[];
-  outdoorEquipment: InspectionItem[];
-  remarks: string;
+  region: string;
+  district: string;
+  date: string;
+  substationNo: string;
+  substationName?: string;
+  type: 'indoor' | 'outdoor';
+  items: InspectionItem[];
   createdBy: string;
   createdAt: string;
 };
