@@ -1,10 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SubstationInspection } from "@/lib/types";
+import { SubstationInspection } from "@/lib/asset-types";
 import { useData } from "@/contexts/DataContext";
 import { format } from "date-fns";
 import { ChevronLeft, Pencil } from "lucide-react";
@@ -45,7 +46,8 @@ export default function InspectionDetailsPage() {
 
   const getItemsByCategory = (categoryName: string) => {
     const category = inspection.items.find(cat => cat.category === categoryName);
-    return category ? category.items : [];
+    // Return an empty array if category is not found or items are undefined
+    return category && category.items ? category.items : [];
   };
 
   return (
@@ -119,10 +121,14 @@ export default function InspectionDetailsPage() {
                 <p className="text-sm font-medium text-muted-foreground">Status Summary</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {inspection.items.flatMap(category => category.items).filter(item => item.status === "good").length} good
+                    {inspection.items
+                      .flatMap(category => category.items || [])
+                      .filter(item => item && item.status === "good").length} good
                   </span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {inspection.items.flatMap(category => category.items).filter(item => item.status === "bad").length} bad
+                    {inspection.items
+                      .flatMap(category => category.items || [])
+                      .filter(item => item && item.status === "bad").length} bad
                   </span>
                 </div>
               </div>
