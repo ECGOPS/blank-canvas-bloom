@@ -1,3 +1,4 @@
+
 import { type ClassValue } from "clsx";
 
 export type UserRole = "district_engineer" | "regional_engineer" | "global_engineer" | null;
@@ -143,11 +144,12 @@ export type VITInspectionChecklist = {
   createdAt: string;
 };
 
-// Updated to match with asset-types
+// Updated InspectionItem to match how it's used in the code
 export interface InspectionItem {
   id: string;
   category: string;
   name: string;
+  description?: string;
   status: ConditionStatus;
   remarks?: string;
 }
@@ -159,12 +161,15 @@ export interface InspectionCategory {
 
 export interface SubstationInspection {
   id: string;
+  regionId?: string; // Added to match usage in EditInspectionPage
+  districtId?: string; // Added to match usage in EditInspectionPage
   region: string;
   district: string;
   date: string;
   substationNo: string;
+  substationName?: string; // Added to match usage in EditInspectionPage
   type: 'indoor' | 'outdoor';
-  items: InspectionCategory[];
+  items: InspectionItem[]; // Changed from InspectionCategory[] to match usage
   createdAt?: string;
   createdBy?: string;
 }
@@ -191,6 +196,7 @@ export interface DataContextType {
   vitAssets: VITAsset[];
   vitInspections: VITInspectionChecklist[];
   savedInspections?: SubstationInspection[];
+  loadMonitoringRecords?: any[]; // Added to match usage
   addOP5Fault: (fault: Omit<OP5Fault, "id" | "status">) => void;
   addControlOutage: (outage: Omit<ControlSystemOutage, "id" | "status">) => void;
   resolveFault: (id: string, type: "op5" | "control") => void;
@@ -208,4 +214,5 @@ export interface DataContextType {
   updateInspection?: (id: string, data: Partial<SubstationInspection>) => void;
   saveInspection?: (data: Omit<SubstationInspection, "id">) => string;
   deleteInspection?: (id: string) => void;
+  deleteLoadMonitoringRecord?: (id: string) => void; // Added to match usage
 }

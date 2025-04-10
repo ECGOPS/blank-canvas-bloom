@@ -51,6 +51,17 @@ interface DataContextType {
   updateLoadMonitoringRecord: (id: string, record: Partial<LoadMonitoringData>) => void;
   deleteLoadMonitoringRecord: (id: string) => void;
   getLoadMonitoringRecordById: (id: string) => LoadMonitoringData | null;
+  
+  // Map old method names to new ones for backward compatibility
+  addVITAsset: (asset: Omit<VITAsset, "id" | "createdAt" | "updatedAt" | "createdBy">) => void;
+  addVITInspection: (inspection: Omit<VITInspectionChecklist, "id" | "createdBy" | "createdAt">) => void;
+  addOP5Fault: (fault: Omit<OP5Fault, "id" | "status" | "createdBy" | "createdAt">) => void;
+  addControlOutage: (outage: Omit<ControlSystemOutage, "id" | "status" | "createdBy" | "createdAt">) => void;
+  resolveFault: (id: string, type: "op5" | "control") => void;
+  deleteFault: (id: string, type: "op5" | "control") => void;
+  canEditFault: (fault: OP5Fault | ControlSystemOutage) => boolean;
+  updateDistrict: (id: string, updates: Partial<District>) => void;
+  getFilteredFaults: (regionId?: string, districtId?: string) => { op5Faults: OP5Fault[], controlOutages: ControlSystemOutage[] };
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -59,12 +70,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user } = useAuth();
   
   // Base Data
-  const [regionsData] = useState<Region[]>(regions);
-  const [districtsData] = useState<District[]>(districts);
+  const [regionsData] = useState<Region[]>(regions as Region[]);
+  const [districtsData] = useState<District[]>(districts as District[]);
   
   // VIT Data
-  const [vitAssetsData, setVitAssetsData] = useState<VITAsset[]>(vitAssets);
-  const [vitInspectionsData, setVitInspectionsData] = useState<VITInspectionChecklist[]>(vitInspections);
+  const [vitAssetsData, setVitAssetsData] = useState<VITAsset[]>(vitAssets as VITAsset[]);
+  const [vitInspectionsData, setVitInspectionsData] = useState<VITInspectionChecklist[]>(vitInspections as VITInspectionChecklist[]);
   
   // Substation Inspection Data
   const [savedInspectionsData, setSavedInspectionsData] = useState<SubstationInspection[]>([]);
@@ -73,8 +84,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loadMonitoringData, setLoadMonitoringData] = useState<LoadMonitoringData[]>([]);
   
   // Faults Data
-  const [op5FaultsData, setOp5FaultsData] = useState<OP5Fault[]>(op5Faults);
-  const [controlSystemOutagesData, setControlSystemOutagesData] = useState<ControlSystemOutage[]>(controlSystemOutages);
+  const [op5FaultsData, setOp5FaultsData] = useState<OP5Fault[]>(op5Faults as OP5Fault[]);
+  const [controlSystemOutagesData, setControlSystemOutagesData] = useState<ControlSystemOutage[]>(controlSystemOutages as ControlSystemOutage[]);
   
   // District Population Data
   const [districtPopulationsData, setDistrictPopulationsData] = useState<DistrictPopulation[]>([]);
@@ -261,7 +272,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newFault: OP5Fault = {
       id: uuidv4(),
       ...fault,
-      status: 'pending',
+      status: 'active', // Change from 'pending' to 'active' to match the allowed status types
       createdBy: user?.name || 'Anonymous',
       createdAt: new Date().toISOString()
     };
@@ -273,7 +284,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newOutage: ControlSystemOutage = {
       id: uuidv4(),
       ...outage,
-      status: 'pending',
+      status: 'active', // Change from 'pending' to 'active' to match the allowed status types
       createdBy: user?.name || 'Anonymous',
       createdAt: new Date().toISOString()
     };
@@ -298,6 +309,102 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDistrictPopulationsData(prev => [...prev, population]);
     }
   }, [districtPopulationsData]);
+
+  // Compatibility methods for backward compatibility
+  const addVITAsset = useCallback((asset: Omit<VITAsset, "id" | "createdAt" | "updatedAt" | "createdBy">) => {
+    const newAsset: VITAsset = {
+      id: uuidv4(),
+      ...asset,
+      createdBy: user?.name || 'Anonymous',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    saveVITAsset(newAsset);
+  }, [saveVITAsset, user]);
+
+  const addVITInspection = useCallback((inspection: Omit<VITInspectionChecklist, "id" | "createdBy" | "createdAt">) => {
+    const newInspection: VITInspectionChecklist = {
+      id: uuidv4(),
+      ...inspection,
+      createdBy: user?.name || 'Anonymous',
+      createdAt: new Date().toISOString()
+    };
+    saveVITInspection(newInspection);
+  }, [saveVITInspection, user]);
+
+  const addOP5Fault = useCallback((fault: Omit<OP5Fault, "id" | "status" | "createdBy" | "createdAt">) => {
+    saveOP5Fault(fault);
+  }, [saveOP5Fault]);
+
+  const addControlOutage = useCallback((outage: Omit<ControlSystemOutage, "id" | "status" | "createdBy" | "createdAt">) => {
+    saveControlSystemOutage(outage);
+  }, [saveControlSystemOutage]);
+
+  // Add these methods for compatibility
+  const resolveFault = useCallback((id: string, type: "op5" | "control") => {
+    if (type === "op5") {
+      setOp5FaultsData(prev => 
+        prev.map(fault => 
+          fault.id === id 
+            ? { ...fault, status: 'resolved' } 
+            : fault
+        )
+      );
+    } else {
+      setControlSystemOutagesData(prev => 
+        prev.map(outage => 
+          outage.id === id 
+            ? { ...outage, status: 'resolved' } 
+            : outage
+        )
+      );
+    }
+  }, []);
+
+  const deleteFault = useCallback((id: string, type: "op5" | "control") => {
+    if (type === "op5") {
+      setOp5FaultsData(prev => prev.filter(fault => fault.id !== id));
+    } else {
+      setControlSystemOutagesData(prev => prev.filter(outage => outage.id !== id));
+    }
+  }, []);
+
+  const canEditFault = useCallback((fault: OP5Fault | ControlSystemOutage) => {
+    if (!user) return false;
+    if (user.role === "global_engineer") return true;
+    
+    if (user.role === "regional_engineer") {
+      return fault.regionId === regionsData.find(r => r.name === user.region)?.id;
+    }
+    
+    if (user.role === "district_engineer") {
+      return fault.districtId === districtsData.find(d => d.name === user.district)?.id;
+    }
+    
+    return false;
+  }, [user, regionsData, districtsData]);
+
+  const updateDistrict = useCallback((id: string, updates: Partial<District>) => {
+    // Implementation would update districts
+    console.log("Updating district", id, updates);
+  }, []);
+
+  const getFilteredFaults = useCallback((regionId?: string, districtId?: string) => {
+    let filteredOP5 = [...op5FaultsData];
+    let filteredControl = [...controlSystemOutagesData];
+    
+    if (regionId) {
+      filteredOP5 = filteredOP5.filter(fault => fault.regionId === regionId);
+      filteredControl = filteredControl.filter(outage => outage.regionId === regionId);
+    }
+    
+    if (districtId) {
+      filteredOP5 = filteredOP5.filter(fault => fault.districtId === districtId);
+      filteredControl = filteredControl.filter(outage => outage.districtId === districtId);
+    }
+    
+    return { op5Faults: filteredOP5, controlOutages: filteredControl };
+  }, [op5FaultsData, controlSystemOutagesData]);
   
   const value = {
     regions: regionsData,
@@ -327,7 +434,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveLoadMonitoringRecord,
     updateLoadMonitoringRecord,
     deleteLoadMonitoringRecord,
-    getLoadMonitoringRecordById
+    getLoadMonitoringRecordById,
+    
+    // Add compatibility methods
+    addVITAsset,
+    addVITInspection,
+    addOP5Fault,
+    addControlOutage,
+    resolveFault,
+    deleteFault,
+    canEditFault,
+    updateDistrict,
+    getFilteredFaults
   };
   
   return (

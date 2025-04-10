@@ -16,7 +16,7 @@ import { LoadMonitoringData } from "@/lib/asset-types";
 import { formatDate } from "@/utils/calculations";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Export, FileText, MoreVertical, PlusCircle, Search, Trash2 } from "lucide-react";
+import { FileText, MoreVertical, PlusCircle, Search, Trash2, Download } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { exportLoadMonitoringToPDF, exportLoadMonitoringToCsv } from "@/utils/pdfExport";
 
@@ -168,14 +168,14 @@ export default function LoadMonitoringManagementPage() {
                                 e.stopPropagation();
                                 handleExportPDF(record);
                               }}>
-                                <Export className="mr-2 h-4 w-4" />
+                                <Download className="mr-2 h-4 w-4" />
                                 Export PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
                                 handleExportCSV(record);
                               }}>
-                                <Export className="mr-2 h-4 w-4" />
+                                <Download className="mr-2 h-4 w-4" />
                                 Export CSV
                               </DropdownMenuItem>
                               <DropdownMenuItem 
