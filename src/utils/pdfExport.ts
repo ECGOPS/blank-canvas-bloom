@@ -709,4 +709,3 @@ export const exportSubstationInspectionToCsv = (inspection: SubstationInspection
   const url = URL.createObjectURL(blob);
   
   link.setAttribute("href", url);
-  link.setAttribute

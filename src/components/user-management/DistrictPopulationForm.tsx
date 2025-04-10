@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -104,7 +105,17 @@ export function DistrictPopulationForm() {
   const filteredDistricts = selectedRegion
     ? districts.filter(d => {
       const region = regions.find(r => r.id === selectedRegion);
-      return region?.districts.some(rd => rd.id === d.id) && (
+      if (!region) return false;
+      
+      // Safely check if districts property exists and is an array
+      const regionDistricts = region.districts || [];
+      if (!Array.isArray(regionDistricts)) return false;
+      
+      // Handle both cases: district IDs as strings or as objects with id property
+      return regionDistricts.some(rd => {
+        if (typeof rd === 'string') return rd === d.id;
+        return rd && typeof rd === 'object' && 'id' in rd && rd.id === d.id;
+      }) && (
         user?.role === "district_engineer" 
           ? user.district === d.name 
           : true

@@ -126,8 +126,11 @@ export default function SubstationInspectionPage() {
         const regionDistricts = region.districts || [];
         if (!Array.isArray(regionDistricts)) return false;
         
-        // Now safely use some
-        return regionDistricts.some(rd => rd === d.id || rd.id === d.id) && (
+        // Handle both cases: district IDs as strings or as objects with id property
+        return regionDistricts.some(rd => {
+          if (typeof rd === 'string') return rd === d.id;
+          return rd && typeof rd === 'object' && 'id' in rd && rd.id === d.id;
+        }) && (
           user?.role === "district_engineer" 
             ? user.district === d.name 
             : true

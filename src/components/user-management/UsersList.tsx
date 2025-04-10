@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { User, UserRole } from "@/lib/types";
@@ -355,15 +354,24 @@ export function UsersList() {
                   <SelectContent>
                     {districts
                       .filter(d => {
-                        const district = regions.find(r => r.name === newRegion)?.districts.find(dist => dist.id === d.id);
-                        return !!district;
-                      })
-                      .map(district => (
-                        <SelectItem key={district.id} value={district.name}>
-                          {district.name}
-                        </SelectItem>
-                      ))
-                    }
+                        const region = regions.find(r => r.name === newRegion);
+                        if (!region || !region.districts) return false;
+                          
+                          // Safety check to ensure districts is an array
+                          if (!Array.isArray(region.districts)) return false;
+                          
+                          // Handle both cases: district IDs as strings or as objects with id property
+                          return region.districts.some(rd => {
+                            if (typeof rd === 'string') return rd === d.id;
+                            return rd && typeof rd === 'object' && 'id' in rd && rd.id === d.id;
+                          });
+                        })
+                        .map(district => (
+                          <SelectItem key={district.id} value={district.name}>
+                            {district.name}
+                          </SelectItem>
+                        ))
+                      }
                   </SelectContent>
                 </Select>
               </div>
@@ -458,8 +466,17 @@ export function UsersList() {
                   <SelectContent>
                     {districts
                       .filter(d => {
-                        const district = regions.find(r => r.name === newRegion)?.districts.find(dist => dist.id === d.id);
-                        return !!district;
+                        const region = regions.find(r => r.name === newRegion);
+                        if (!region || !region.districts) return false;
+                        
+                        // Safety check to ensure districts is an array
+                        if (!Array.isArray(region.districts)) return false;
+                        
+                        // Handle both cases: district IDs as strings or as objects with id property
+                        return region.districts.some(rd => {
+                          if (typeof rd === 'string') return rd === d.id;
+                          return rd && typeof rd === 'object' && 'id' in rd && rd.id === d.id;
+                        });
                       })
                       .map(district => (
                         <SelectItem key={district.id} value={district.name}>
