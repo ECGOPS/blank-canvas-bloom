@@ -1,138 +1,86 @@
 
-import { useState } from "react";
-import { useData } from "@/contexts/DataContext";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import { useData } from "@/contexts/DataContext";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { VITAssetsTable } from "@/components/vit/VITAssetsTable";
-import { VITAssetForm } from "@/components/vit/VITAssetForm";
+import { AssetInfoCard } from "@/components/vit/AssetInfoCard";
 import { VITInspectionForm } from "@/components/vit/VITInspectionForm";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { VITAsset } from "@/lib/types";
-import { useNavigate } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 
 export default function VITInspectionPage() {
-  const { vitAssets } = useData();
+  const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("assets");
-  const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
-  const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<VITAsset | null>(null);
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const { vitAssets } = useData();
+  const [asset, setAsset] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const handleAddAsset = () => {
-    setSelectedAsset(null);
-    setIsAssetFormOpen(true);
+  useEffect(() => {
+    if (assetId) {
+      // Find the asset by ID
+      const foundAsset = vitAssets.find(a => a.id === assetId);
+      if (foundAsset) {
+        setAsset(foundAsset);
+        setIsLoading(false);
+      } else {
+        toast.error("Asset not found");
+        navigate("/asset-management/vit-inspection");
+      }
+    }
+  }, [assetId, vitAssets, navigate]);
+  
+  const handleSubmit = () => {
+    toast.success("Inspection saved successfully");
+    navigate("/asset-management/vit-inspection-management");
   };
   
-  const handleEditAsset = (asset: VITAsset) => {
-    setSelectedAsset(asset);
-    setIsAssetFormOpen(true);
+  const handleCancel = () => {
+    navigate("/asset-management/vit-inspection");
   };
   
-  const handleAddInspection = (assetId: string) => {
-    setSelectedAssetId(assetId);
-    setIsInspectionFormOpen(true);
-  };
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container py-8">
+          <p>Loading asset data...</p>
+        </div>
+      </Layout>
+    );
+  }
   
-  const handleAssetFormClose = () => {
-    setIsAssetFormOpen(false);
-    setSelectedAsset(null);
-  };
-  
-  const handleInspectionFormClose = () => {
-    setIsInspectionFormOpen(false);
-    setSelectedAssetId(null);
-  };
-  
-  const handleViewInspections = (assetId: string) => {
-    navigate(`/asset-management/vit-inspection-details/${assetId}`);
-  };
-
   return (
     <Layout>
       <div className="container py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">VITs Inspection</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage and monitor VIT assets and conduct inspections
-            </p>
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/asset-management/vit-inspection")}
+          className="mb-4"
+        >
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back to VIT Inspection
+        </Button>
+        
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">VIT Inspection</h1>
+          <p className="text-muted-foreground mt-1">
+            Create a new inspection record for the selected VIT asset
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <AssetInfoCard asset={asset} />
+          </div>
+          
+          <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm p-6">
+            <VITInspectionForm
+              assetId={asset.id}
+              onFormSubmit={handleSubmit}
+              onFormCancel={handleCancel}
+            />
           </div>
         </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 w-full max-w-md">
-            <TabsTrigger value="assets">VIT Assets</TabsTrigger>
-            <TabsTrigger value="inspections">Inspection Records</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="assets" className="space-y-6">
-            <VITAssetsTable 
-              onAddAsset={handleAddAsset} 
-              onEditAsset={handleEditAsset}
-              onInspect={handleAddInspection}
-            />
-          </TabsContent>
-          
-          <TabsContent value="inspections">
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <div className="text-center space-y-2 max-w-md">
-                <h2 className="text-2xl font-semibold">View Inspection Records</h2>
-                <p className="text-muted-foreground">
-                  Select an asset from the Assets tab to view its inspection history, or click below to browse all inspections.
-                </p>
-              </div>
-              <Button
-                onClick={() => navigate("/asset-management/vit-inspection-management")}
-                size="lg"
-                className="mt-4"
-              >
-                Browse All Inspections
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Asset Form Sheet */}
-        <Sheet open={isAssetFormOpen} onOpenChange={setIsAssetFormOpen}>
-          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>{selectedAsset ? "Edit VIT Asset" : "Add New VIT Asset"}</SheetTitle>
-              <SheetDescription>
-                {selectedAsset 
-                  ? "Update the information for this VIT asset" 
-                  : "Fill in the details to add a new VIT asset"}
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-6">
-              <VITAssetForm 
-                asset={selectedAsset} 
-                onFormSubmit={handleAssetFormClose}
-                onFormCancel={handleAssetFormClose}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        {/* Inspection Form Sheet */}
-        <Sheet open={isInspectionFormOpen} onOpenChange={setIsInspectionFormOpen}>
-          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>New Inspection</SheetTitle>
-              <SheetDescription>
-                Complete the inspection checklist for this VIT asset
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-6">
-              <VITInspectionForm 
-                assetId={selectedAssetId || ""}
-                onFormSubmit={handleInspectionFormClose}
-                onFormCancel={handleInspectionFormClose}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
     </Layout>
   );

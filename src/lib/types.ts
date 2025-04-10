@@ -79,7 +79,6 @@ export interface InspectionItem {
 export interface InspectionCategory {
   id: string;
   name: string;
-  category: string;
   items: InspectionItem[];
 }
 
@@ -184,4 +183,17 @@ export interface ChecklistItemProps {
   item: InspectionItem;
   onStatusChange: (status: any) => void;
   onRemarksChange: (remarks: any) => void;
+}
+
+export interface VITInspectionFormProps {
+  assetId: string;
+  inspectionData?: VITInspectionChecklist;
+  onFormSubmit: () => void;
+  onFormCancel: () => void;
+}
+
+export interface VITAssetFormProps {
+  assetData?: VITAsset;
+  onFormSubmit: (asset: VITAsset) => void;
+  onFormCancel: () => void;
 }

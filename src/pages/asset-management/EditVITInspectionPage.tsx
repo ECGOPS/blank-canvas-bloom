@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useData } from "@/contexts/DataContext";
 import { VITInspectionForm } from "@/components/vit/VITInspectionForm";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VITInspectionChecklist } from "@/lib/types";

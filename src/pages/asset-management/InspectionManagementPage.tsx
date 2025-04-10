@@ -28,7 +28,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { exportSubstationInspectionToPDF, exportSubstationInspectionToCsv, exportAllSubstationInspectionsToCsv } from "@/utils/pdfExport";
+import { 
+  exportSubstationInspectionToPDF, 
+  exportSubstationInspectionToCsv, 
+  exportAllSubstationInspectionsToCsv 
+} from "@/utils/pdfExport";
 
 export default function InspectionManagementPage() {
   const { user } = useAuth();

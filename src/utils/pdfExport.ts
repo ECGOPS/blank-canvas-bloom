@@ -1,3 +1,4 @@
+
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { VITAsset, VITInspectionChecklist, SubstationInspection } from '@/lib/types';
@@ -25,6 +26,7 @@ declare module 'jspdf' {
     };
     getNumberOfPages: () => number;
     setPage: (pageNumber: number) => jsPDF;
+    getPage: () => number;
   }
 }
 
@@ -255,7 +257,10 @@ export function exportSubstationInspectionToPDF(inspection: SubstationInspection
   doc.save(`substation_inspection_${inspection.substationNo}.pdf`);
 }
 
-// Export substation inspection to CSV
+/**
+ * Export substation inspection to CSV
+ * @param inspection The inspection to export
+ */
 export function exportSubstationInspectionToCsv(inspection: SubstationInspection) {
   // Create CSV content
   let csvContent = "data:text/csv;charset=utf-8,";
@@ -278,4 +283,46 @@ export function exportSubstationInspectionToCsv(inspection: SubstationInspection
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+/**
+ * Export all substation inspections to a single CSV file
+ * @param inspections Array of inspections to export
+ */
+export function exportAllSubstationInspectionsToCsv(inspections: SubstationInspection[]) {
+  // Create CSV content
+  let csvContent = "data:text/csv;charset=utf-8,";
+  
+  // Add header row
+  csvContent += "Substation No,Substation Name,Region,District,Date,Type,Emergency,Category,Item,Status,Remarks\n";
+  
+  // Add all inspections with their items
+  inspections.forEach(inspection => {
+    inspection.items.forEach(category => {
+      category.items.forEach(item => {
+        csvContent += `"${inspection.substationNo}","${inspection.substationName || ''}","${inspection.region}","${inspection.district}","${inspection.date}","${inspection.type}","${inspection.isEmergency ? 'Yes' : 'No'}","${category.name}","${item.name}","${item.status}","${item.remarks || ''}"\n`;
+      });
+    });
+  });
+  
+  // Create and trigger download
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `all_substation_inspections_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * Placeholder for Load Monitoring PDF export
+ * This is needed to fix import errors in other files
+ */
+export function exportLoadMonitoringToPDF(data: any) {
+  console.log("Load monitoring PDF export not yet implemented", data);
+  // Create a simple placeholder PDF
+  const doc = new jsPDF();
+  doc.text("Load Monitoring Report - Not Yet Implemented", 20, 20);
+  doc.save("load_monitoring_report.pdf");
 }
