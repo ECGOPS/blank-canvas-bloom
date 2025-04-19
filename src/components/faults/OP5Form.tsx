@@ -76,15 +76,18 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "" }: OP5For
     ? regions 
     : regions.filter(r => user?.region ? r.name === user.region : true);
 
-  // Filter districts based on region and user role  
+  // Filter districts based on region and user role
   const filteredDistricts = regionId
     ? districts.filter(d => {
-        const region = regions.find(r => r.id === regionId);
-        return region?.districts.some(rd => rd.id === d.id) && (
-          user?.role === "district_engineer" 
-            ? user.district === d.name 
-            : true
-        );
+        // First check if the district belongs to the selected region
+        if (d.regionId !== regionId) return false;
+        
+        // Then check user role restrictions
+        if (user?.role === "district_engineer") {
+          return user.district === d.name;
+        }
+        
+        return true;
       })
     : [];
 
@@ -217,14 +220,11 @@ export function OP5Form({ defaultRegionId = "", defaultDistrictId = "" }: OP5For
                   <SelectValue placeholder="Select district" />
                 </SelectTrigger>
                 <SelectContent>
-                  {regionId && districts
-                    .filter(d => d.regionId === regionId)
-                    .map(district => (
-                      <SelectItem key={district.id} value={district.id}>
-                        {district.name}
-                      </SelectItem>
-                    ))
-                  }
+                  {filteredDistricts.map(district => (
+                    <SelectItem key={district.id} value={district.id}>
+                      {district.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
