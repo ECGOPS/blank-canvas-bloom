@@ -8,8 +8,18 @@ import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { FaultCard } from "@/components/dashboard/FaultCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, AlertTriangle, ZapOff, RefreshCw, Filter } from "lucide-react";
+import { 
+  PlusCircle, 
+  AlertTriangle, 
+  ZapOff, 
+  RefreshCw, 
+  LayoutDashboard,  // Professional dashboard icon
+  TrendingUp,       // Added for visual enhancement
+  Activity          // Professional activity icon
+} from "lucide-react";
 import { OP5Fault, ControlSystemOutage } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
   const { isAuthenticated, user } = useAuth();
@@ -91,28 +101,43 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="container mx-auto py-6 px-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-none shadow-sm mb-8">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-3xl font-bold tracking-tight flex items-center">
+              <LayoutDashboard className="mr-3 h-8 w-8 text-primary" />
               Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Monitor and manage power distribution faults
+            </CardTitle>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleRefresh} 
+                disabled={isRefreshing}
+                className="hover:bg-primary/10 transition-colors"
+              >
+                <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+              </Button>
+              <Button 
+                asChild 
+                className="group bg-primary hover:bg-primary/90 transition-colors"
+              >
+                <Link to="/report-fault" className="flex items-center">
+                  <PlusCircle 
+                    size={16} 
+                    className="mr-2 group-hover:rotate-180 transition-transform" 
+                  />
+                  Report New Fault
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground flex items-center">
+              <Activity className="mr-2 h-5 w-5 text-primary/70" />
+              Monitor and manage power distribution faults with real-time insights
             </p>
-          </div>
-          
-          <div className="flex gap-3">
-            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-            </Button>
-            <Button asChild>
-              <Link to="/report-fault" className="flex items-center">
-                <PlusCircle size={16} className="mr-2" />
-                Report New Fault
-              </Link>
-            </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
         <StatsOverview 
           op5Faults={faults.op5Faults} 
@@ -129,13 +154,24 @@ export default function DashboardPage() {
         />
         
         <Tabs defaultValue="all" className="mt-8">
-          <TabsList className="mb-6 grid w-full grid-cols-3 max-w-md mx-auto">
-            <TabsTrigger value="all">All Faults</TabsTrigger>
-            <TabsTrigger value="op5" className="flex items-center justify-center">
+          <TabsList className="mb-6 grid w-full grid-cols-3 max-w-md mx-auto bg-muted/50">
+            <TabsTrigger 
+              value="all" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm"
+            >
+              All Faults
+            </TabsTrigger>
+            <TabsTrigger 
+              value="op5" 
+              className="flex items-center justify-center data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm"
+            >
               <AlertTriangle size={16} className="mr-2" />
               OP5 Faults
             </TabsTrigger>
-            <TabsTrigger value="control" className="flex items-center justify-center">
+            <TabsTrigger 
+              value="control" 
+              className="flex items-center justify-center data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm"
+            >
               <ZapOff size={16} className="mr-2" />
               Control System
             </TabsTrigger>
