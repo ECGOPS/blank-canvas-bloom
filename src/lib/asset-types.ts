@@ -1,40 +1,67 @@
-
-// Asset Management Types
-
-export interface FeederLeg {
+export interface OP5Fault {
   id: string;
-  redPhaseCurrent: number;
-  yellowPhaseCurrent: number;
-  bluePhaseCurrent: number;
-  neutralCurrent: number;
+  regionId: string;
+  districtId: string;
+  occurrenceDate: string;
+  restorationDate?: string;
+  faultType: string;
+  faultLocation: string;
+  affectedPopulation: {
+    rural: number;
+    urban: number;
+    metro: number;
+  };
+  status: "active" | "resolved";
+  mttr?: number;
+  outrageDuration?: number;
+}
+
+export interface ControlSystemOutage {
+  id: string;
+  regionId: string;
+  districtId: string;
+  occurrenceDate: string;
+  restorationDate?: string;
+  reason: string;
+  areaAffected: string;
+  loadMW: number;
+  customersAffected: {
+    rural: number;
+    urban: number;
+    metro: number;
+  };
+  unservedEnergyMWh: number;
+  status: "active" | "resolved";
+}
+
+export interface Region {
+  id: string;
+  name: string;
+}
+
+export interface District {
+  id: string;
+  name: string;
+  regionId: string;
+}
+
+export interface StatsOverviewProps {
+  op5Faults: OP5Fault[];
+  controlOutages: ControlSystemOutage[];
 }
 
 export interface LoadMonitoringData {
-  id: string;
-  regionId: string;
-  region?: string;
-  districtId: string;
-  district?: string;
-  date: string;
-  time: string;
   substationName: string;
-  substationNumber: string;
-  location: string;
-  rating: number;
-  peakLoadStatus: 'day' | 'night';
-  feederLegs: FeederLeg[];
-  
-  // Calculated values
-  ratedLoad: number;
-  redPhaseBulkLoad: number;
-  yellowPhaseBulkLoad: number;
-  bluePhaseBulkLoad: number;
-  averageCurrent: number;
-  percentageLoad: number;
-  tenPercentFullLoadNeutral: number;
-  calculatedNeutral: number;
-  
-  // Metadata
-  createdBy: string;
-  createdAt: string;
+  feederName: string;
+  region: string;
+  district: string;
+  date: string;
+  recordedBy: string;
+  maximumLoadMW: number;
+  minimumLoadMW: number;
+  averageLoadMW: number;
+  maximumLoadTime?: string;
+  minimumLoadTime?: string;
+  hourlyReadings?: { hour: number; loadMW: number }[];
+  remarks?: string;
 }

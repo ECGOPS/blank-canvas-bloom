@@ -42,47 +42,47 @@ export function StatsOverview({ op5Faults, controlOutages }: StatsOverviewProps)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card>
+      <Card className="stat-card interactive-card">
         <CardHeader>
           <CardTitle>Total Faults</CardTitle>
           <CardDescription>Number of reported OP5 faults</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center space-x-4">
           <Zap className="h-8 w-8 text-red-500" />
-          <div className="text-3xl font-bold">{totalFaults}</div>
+          <div className="text-3xl font-bold text-primary">{totalFaults}</div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stat-card interactive-card">
         <CardHeader>
           <CardTitle>Total Outages</CardTitle>
           <CardDescription>Number of control system outages</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center space-x-4">
           <MonitorSmartphone className="h-8 w-8 text-orange-500" />
-          <div className="text-3xl font-bold">{totalOutages}</div>
+          <div className="text-3xl font-bold text-primary">{totalOutages}</div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stat-card interactive-card">
         <CardHeader>
           <CardTitle>Affected Population</CardTitle>
           <CardDescription>Total population affected by faults</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center space-x-4">
           <Users className="h-8 w-8 text-blue-500" />
-          <div className="text-3xl font-bold">{affectedPopulation}</div>
+          <div className="text-3xl font-bold text-primary">{affectedPopulation}</div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="stat-card interactive-card">
         <CardHeader>
           <CardTitle>Avg. Outage Time</CardTitle>
           <CardDescription>Average time to resolve a fault (minutes)</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center space-x-4">
           <Clock className="h-8 w-8 text-green-500" />
-          <div className="text-3xl font-bold">{averageOutageTime.toFixed(0)}</div>
+          <div className="text-3xl font-bold text-primary">{averageOutageTime.toFixed(0)}</div>
         </CardContent>
       </Card>
     </div>

@@ -101,9 +101,9 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="container mx-auto py-6 px-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-none shadow-sm mb-8">
+        <Card className="bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 border-none shadow-lg mb-8 interactive-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-3xl font-bold tracking-tight flex items-center">
+            <CardTitle className="text-3xl font-bold tracking-tight flex items-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               <LayoutDashboard className="mr-3 h-8 w-8 text-primary" />
               Dashboard
             </CardTitle>
@@ -113,13 +113,13 @@ export default function DashboardPage() {
                 size="icon" 
                 onClick={handleRefresh} 
                 disabled={isRefreshing}
-                className="hover:bg-primary/10 transition-colors"
+                className="hover:bg-primary/10 transition-colors glass-card"
               >
                 <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
               </Button>
               <Button 
                 asChild 
-                className="group bg-primary hover:bg-primary/90 transition-colors"
+                className="group bg-primary hover:bg-primary/90 transition-colors animated-gradient"
               >
                 <Link to="/report-fault" className="flex items-center">
                   <PlusCircle 
@@ -154,23 +154,23 @@ export default function DashboardPage() {
         />
         
         <Tabs defaultValue="all" className="mt-8">
-          <TabsList className="mb-6 grid w-full grid-cols-3 max-w-md mx-auto bg-muted/50">
+          <TabsList className="mb-6 grid w-full grid-cols-3 max-w-md mx-auto bg-card shadow-inner">
             <TabsTrigger 
               value="all" 
-              className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm transition-all duration-300"
             >
               All Faults
             </TabsTrigger>
             <TabsTrigger 
               value="op5" 
-              className="flex items-center justify-center data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm"
+              className="flex items-center justify-center data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm transition-all duration-300"
             >
               <AlertTriangle size={16} className="mr-2" />
               OP5 Faults
             </TabsTrigger>
             <TabsTrigger 
               value="control" 
-              className="flex items-center justify-center data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm"
+              className="flex items-center justify-center data-[state=active]:bg-primary/10 data-[state=active]:shadow-sm transition-all duration-300"
             >
               <ZapOff size={16} className="mr-2" />
               Control System
