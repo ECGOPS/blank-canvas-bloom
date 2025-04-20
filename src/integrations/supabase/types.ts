@@ -175,31 +175,76 @@ export type Database = {
       }
       load_monitoring: {
         Row: {
+          average_current: number | null
+          blue_phase_bulk_load: number | null
+          calculated_neutral: number | null
           created_at: string
-          created_by: string | null
+          created_by: string
+          date: string | null
           district_id: string | null
           id: string
+          location: string | null
+          peak_load_status: string | null
+          percentage_load: number | null
+          rated_load: number | null
+          rating: number | null
           reading_value: number
+          red_phase_bulk_load: number | null
           region_id: string | null
+          substation_name: string | null
+          substation_number: string | null
+          ten_percent_full_load_neutral: number | null
+          time: string | null
           updated_at: string
+          yellow_phase_bulk_load: number | null
         }
         Insert: {
+          average_current?: number | null
+          blue_phase_bulk_load?: number | null
+          calculated_neutral?: number | null
           created_at?: string
-          created_by?: string | null
+          created_by: string
+          date?: string | null
           district_id?: string | null
           id?: string
+          location?: string | null
+          peak_load_status?: string | null
+          percentage_load?: number | null
+          rated_load?: number | null
+          rating?: number | null
           reading_value: number
+          red_phase_bulk_load?: number | null
           region_id?: string | null
+          substation_name?: string | null
+          substation_number?: string | null
+          ten_percent_full_load_neutral?: number | null
+          time?: string | null
           updated_at?: string
+          yellow_phase_bulk_load?: number | null
         }
         Update: {
+          average_current?: number | null
+          blue_phase_bulk_load?: number | null
+          calculated_neutral?: number | null
           created_at?: string
-          created_by?: string | null
+          created_by?: string
+          date?: string | null
           district_id?: string | null
           id?: string
+          location?: string | null
+          peak_load_status?: string | null
+          percentage_load?: number | null
+          rated_load?: number | null
+          rating?: number | null
           reading_value?: number
+          red_phase_bulk_load?: number | null
           region_id?: string | null
+          substation_name?: string | null
+          substation_number?: string | null
+          ten_percent_full_load_neutral?: number | null
+          time?: string | null
           updated_at?: string
+          yellow_phase_bulk_load?: number | null
         }
         Relationships: [
           {
@@ -214,6 +259,41 @@ export type Database = {
             columns: ["region_id"]
             isOneToOne: false
             referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      load_monitoring_feeder_legs: {
+        Row: {
+          blue_phase_current: number | null
+          id: string
+          load_monitoring_id: string | null
+          neutral_current: number | null
+          red_phase_current: number | null
+          yellow_phase_current: number | null
+        }
+        Insert: {
+          blue_phase_current?: number | null
+          id?: string
+          load_monitoring_id?: string | null
+          neutral_current?: number | null
+          red_phase_current?: number | null
+          yellow_phase_current?: number | null
+        }
+        Update: {
+          blue_phase_current?: number | null
+          id?: string
+          load_monitoring_id?: string | null
+          neutral_current?: number | null
+          red_phase_current?: number | null
+          yellow_phase_current?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "load_monitoring_feeder_legs_load_monitoring_id_fkey"
+            columns: ["load_monitoring_id"]
+            isOneToOne: false
+            referencedRelation: "load_monitoring"
             referencedColumns: ["id"]
           },
         ]

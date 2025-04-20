@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -26,10 +25,9 @@ export default function LoadMonitoringManagementPage() {
   const { loadMonitoringRecords, deleteLoadMonitoringRecord } = useData();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Filter records based on search term
+  // Fix filter fields to match new type
   const filteredRecords = loadMonitoringRecords?.filter(record => {
     if (!searchTerm) return true;
-    
     const searchLower = searchTerm.toLowerCase();
     return (
       record.substationName?.toLowerCase().includes(searchLower) ||
@@ -72,21 +70,20 @@ export default function LoadMonitoringManagementPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Load Monitoring Management</h1>
             <p className="text-muted-foreground mt-1">
-              Manage and analyze transformer load monitoring records
+              <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent font-bold">Manage and analyze transformer load monitoring records</span>
             </p>
           </div>
-          
-          <Button onClick={() => navigate("/asset-management/load-monitoring")}>
+          <Button className="bg-gradient-to-br from-pink-400 to-yellow-400 text-white" onClick={() => navigate("/asset-management/load-monitoring")}>
             <PlusCircle className="mr-2 h-4 w-4" />
             New Monitoring
           </Button>
         </div>
-        
-        <Card className="mb-8">
+
+        <Card className="mb-8 shadow-xl border-2 border-gradient-to-br from-indigo-300 via-yellow-100 to-pink-200">
           <CardHeader>
-            <CardTitle>Records</CardTitle>
+            <CardTitle className="bg-gradient-to-r from-indigo-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent">Records</CardTitle>
             <CardDescription>
-              View and manage load monitoring records for all substations
+              <span className="bg-gradient-to-l from-blue-400 via-green-400 to-yellow-300 bg-clip-text text-transparent">View and manage load monitoring records for all substations</span>
             </CardDescription>
           </CardHeader>
           <CardContent>

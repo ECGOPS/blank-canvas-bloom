@@ -1,3 +1,47 @@
+// New types to match the Supabase database schema
+
+export interface FeederLeg {
+  id: string;
+  redPhaseCurrent: number;
+  yellowPhaseCurrent: number;
+  bluePhaseCurrent: number;
+  neutralCurrent: number;
+}
+
+export interface LoadMonitoringData {
+  id: string;
+  regionId: string;
+  districtId: string;
+  date: string;  // YYYY-MM-DD
+  time: string;  // HH:mm
+  substationNumber: string;
+  substationName?: string;
+  location: string;
+  rating: number;
+  peakLoadStatus: "day" | "night";
+  redPhaseBulkLoad?: number;
+  yellowPhaseBulkLoad?: number;
+  bluePhaseBulkLoad?: number;
+  averageCurrent?: number;
+  percentageLoad?: number;
+  ratedLoad?: number;
+  tenPercentFullLoadNeutral?: number;
+  calculatedNeutral?: number;
+  feederLegs: FeederLeg[];
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Region {
+  id: string;
+  name: string;
+}
+export interface District {
+  id: string;
+  name: string;
+  regionId: string;
+}
+
 export interface OP5Fault {
   id: string;
   regionId: string;
@@ -32,17 +76,6 @@ export interface ControlSystemOutage {
   };
   unservedEnergyMWh: number;
   status: "active" | "resolved";
-}
-
-export interface Region {
-  id: string;
-  name: string;
-}
-
-export interface District {
-  id: string;
-  name: string;
-  regionId: string;
 }
 
 export interface StatsOverviewProps {

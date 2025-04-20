@@ -12,7 +12,8 @@ import {
   Region, District, VITAsset, VITInspectionChecklist, SubstationInspection,
   InspectionItem, FaultType, OP5Fault, ControlSystemOutage
 } from '@/lib/types';
-import { LoadMonitoringData } from '@/lib/asset-types';
+import { supabase } from "@/integrations/supabase/client";
+import { LoadMonitoringData, FeederLeg } from '@/lib/asset-types';
 
 interface DistrictPopulation {
   districtId: string;
@@ -244,22 +245,219 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
   
   // Load Monitoring Methods
-  const saveLoadMonitoringRecord = useCallback((record: LoadMonitoringData) => {
-    setLoadMonitoringData(prev => [...prev, record]);
+  const saveLoadMonitoringRecord = useCallback(async (record: LoadMonitoringData) => {
+    const { feederLegs, ...fields } = record;
+    const insertResult = await supabase.from('load_monitoring').insert({
+      id: record.id,
+      region_id: record.regionId,
+      district_id: record.districtId,
+      date: record.date,
+      time: record.time,
+      substation_number: record.substationNumber,
+      substation_name: record.substationName,
+      location: record.location,
+      rating: record.rating,
+      peak_load_status: record.peakLoadStatus,
+      red_phase_bulk_load: record.redPhaseBulkLoad,
+      yellow_phase_bulk_load: record.yellowPhaseBulkLoad,
+      blue_phase_bulk_load: record.bluePhaseBulkLoad,
+      average_current: record.averageCurrent,
+      percentage_load: record.percentageLoad,
+      rated_load: record.ratedLoad,
+      ten_percent_full_load_neutral: record.tenPercentFullLoadNeutral,
+      calculated_neutral: record.calculatedNeutral,
+      created_by: record.createdBy,
+      created_at: record.createdAt,
+    });
+    if (insertResult.error) {
+      toast.error("Could not save load monitoring record");
+      return;
+    }
+    const insertedId = record.id; // must match inserted id
+    for (const leg of feederLegs) {
+      await supabase.from('load_monitoring_feeder_legs').insert({
+        load_monitoring_id: insertedId,
+        red_phase_current: leg.redPhaseCurrent,
+        yellow_phase_current: leg.yellowPhaseCurrent,
+        blue_phase_current: leg.bluePhaseCurrent,
+        neutral_current: leg.neutralCurrent,
+      });
+    }
+    // Refresh all data
+    const fetchLoadMonitoring = async () => {
+      const { data, error } = await supabase
+        .from('load_monitoring')
+        .select(`
+          *,
+          feeder_legs:load_monitoring_feeder_legs (
+            id, red_phase_current, yellow_phase_current, blue_phase_current, neutral_current
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error("Failed to load load monitoring records", error);
+        toast.error("Could not load load monitoring records from server");
+        setLoadMonitoringData([]);
+        return;
+      }
+      // Adapt data to client type
+      setLoadMonitoringData((data || []).map((row: any) => ({
+        id: row.id,
+        regionId: row.region_id,
+        districtId: row.district_id,
+        date: row.date,
+        time: row.time,
+        substationNumber: row.substation_number,
+        substationName: row.substation_name,
+        location: row.location,
+        rating: Number(row.rating),
+        peakLoadStatus: row.peak_load_status,
+        redPhaseBulkLoad: Number(row.red_phase_bulk_load),
+        yellowPhaseBulkLoad: Number(row.yellow_phase_bulk_load),
+        bluePhaseBulkLoad: Number(row.blue_phase_bulk_load),
+        averageCurrent: Number(row.average_current),
+        percentageLoad: Number(row.percentage_load),
+        ratedLoad: Number(row.rated_load),
+        tenPercentFullLoadNeutral: Number(row.ten_percent_full_load_neutral),
+        calculatedNeutral: Number(row.calculated_neutral),
+        feederLegs: (row.feeder_legs || []).map((leg: any) => ({
+          id: leg.id,
+          redPhaseCurrent: Number(leg.red_phase_current),
+          yellowPhaseCurrent: Number(leg.yellow_phase_current),
+          bluePhaseCurrent: Number(leg.blue_phase_current),
+          neutralCurrent: Number(leg.neutral_current),
+        })),
+        createdBy: row.created_by,
+        createdAt: row.created_at
+      })));
+    };
+    fetchLoadMonitoring();
   }, []);
   
-  const updateLoadMonitoringRecord = useCallback((id: string, updatedRecord: Partial<LoadMonitoringData>) => {
-    setLoadMonitoringData(prev => 
-      prev.map(record => 
-        record.id === id 
-          ? { ...record, ...updatedRecord } 
-          : record
-      )
-    );
+  const updateLoadMonitoringRecord = useCallback(async (id: string, record: Partial<LoadMonitoringData>) => {
+    await supabase
+    .from('load_monitoring')
+    .update({
+      region_id: record.regionId,
+      district_id: record.districtId,
+      date: record.date,
+      time: record.time,
+      substation_number: record.substationNumber,
+      substation_name: record.substationName,
+      location: record.location,
+      rating: record.rating,
+      peak_load_status: record.peakLoadStatus,
+      red_phase_bulk_load: record.redPhaseBulkLoad,
+      yellow_phase_bulk_load: record.yellowPhaseBulkLoad,
+      blue_phase_bulk_load: record.bluePhaseBulkLoad,
+      average_current: record.averageCurrent,
+      percentage_load: record.percentageLoad,
+      rated_load: record.ratedLoad,
+      ten_percent_full_load_neutral: record.tenPercentFullLoadNeutral,
+      calculated_neutral: record.calculatedNeutral,
+    })
+    .eq('id', id);
+    
+    const fetchLoadMonitoring = async () => {
+      const { data, error } = await supabase
+        .from('load_monitoring')
+        .select(`
+          *,
+          feeder_legs:load_monitoring_feeder_legs (
+            id, red_phase_current, yellow_phase_current, blue_phase_current, neutral_current
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error("Failed to load load monitoring records", error);
+        toast.error("Could not load load monitoring records from server");
+        setLoadMonitoringData([]);
+        return;
+      }
+      // Adapt data to client type
+      setLoadMonitoringData((data || []).map((row: any) => ({
+        id: row.id,
+        regionId: row.region_id,
+        districtId: row.district_id,
+        date: row.date,
+        time: row.time,
+        substationNumber: row.substation_number,
+        substationName: row.substation_name,
+        location: row.location,
+        rating: Number(row.rating),
+        peakLoadStatus: row.peak_load_status,
+        redPhaseBulkLoad: Number(row.red_phase_bulk_load),
+        yellowPhaseBulkLoad: Number(row.yellow_phase_bulk_load),
+        bluePhaseBulkLoad: Number(row.blue_phase_bulk_load),
+        averageCurrent: Number(row.average_current),
+        percentageLoad: Number(row.percentage_load),
+        ratedLoad: Number(row.rated_load),
+        tenPercentFullLoadNeutral: Number(row.ten_percent_full_load_neutral),
+        calculatedNeutral: Number(row.calculated_neutral),
+        feederLegs: (row.feeder_legs || []).map((leg: any) => ({
+          id: leg.id,
+          redPhaseCurrent: Number(leg.red_phase_current),
+          yellowPhaseCurrent: Number(leg.yellow_phase_current),
+          bluePhaseCurrent: Number(leg.blue_phase_current),
+          neutralCurrent: Number(leg.neutral_current),
+        })),
+        createdBy: row.created_by,
+        createdAt: row.created_at
+      })));
+    };
+    fetchLoadMonitoring();
   }, []);
   
-  const deleteLoadMonitoringRecord = useCallback((id: string) => {
-    setLoadMonitoringData(prev => prev.filter(record => record.id !== id));
+  const deleteLoadMonitoringRecord = useCallback(async (id: string) => {
+    await supabase.from('load_monitoring').delete().eq('id', id);
+    const fetchLoadMonitoring = async () => {
+      const { data, error } = await supabase
+        .from('load_monitoring')
+        .select(`
+          *,
+          feeder_legs:load_monitoring_feeder_legs (
+            id, red_phase_current, yellow_phase_current, blue_phase_current, neutral_current
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error("Failed to load load monitoring records", error);
+        toast.error("Could not load load monitoring records from server");
+        setLoadMonitoringData([]);
+        return;
+      }
+      // Adapt data to client type
+      setLoadMonitoringData((data || []).map((row: any) => ({
+        id: row.id,
+        regionId: row.region_id,
+        districtId: row.district_id,
+        date: row.date,
+        time: row.time,
+        substationNumber: row.substation_number,
+        substationName: row.substation_name,
+        location: row.location,
+        rating: Number(row.rating),
+        peakLoadStatus: row.peak_load_status,
+        redPhaseBulkLoad: Number(row.red_phase_bulk_load),
+        yellowPhaseBulkLoad: Number(row.yellow_phase_bulk_load),
+        bluePhaseBulkLoad: Number(row.blue_phase_bulk_load),
+        averageCurrent: Number(row.average_current),
+        percentageLoad: Number(row.percentage_load),
+        ratedLoad: Number(row.rated_load),
+        tenPercentFullLoadNeutral: Number(row.ten_percent_full_load_neutral),
+        calculatedNeutral: Number(row.calculated_neutral),
+        feederLegs: (row.feeder_legs || []).map((leg: any) => ({
+          id: leg.id,
+          redPhaseCurrent: Number(leg.red_phase_current),
+          yellowPhaseCurrent: Number(leg.yellow_phase_current),
+          bluePhaseCurrent: Number(leg.blue_phase_current),
+          neutralCurrent: Number(leg.neutral_current),
+        })),
+        createdBy: row.created_by,
+        createdAt: row.created_at
+      })));
+    };
+    fetchLoadMonitoring();
   }, []);
   
   const getLoadMonitoringRecordById = useCallback((id: string) => {
@@ -462,6 +660,57 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateDistrict,
     getFilteredFaults
   };
+
+  useEffect(() => {
+    const fetchLoadMonitoring = async () => {
+      const { data, error } = await supabase
+        .from('load_monitoring')
+        .select(`
+          *,
+          feeder_legs:load_monitoring_feeder_legs (
+            id, red_phase_current, yellow_phase_current, blue_phase_current, neutral_current
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error("Failed to load load monitoring records", error);
+        toast.error("Could not load load monitoring records from server");
+        setLoadMonitoringData([]);
+        return;
+      }
+      // Adapt data to client type
+      setLoadMonitoringData((data || []).map((row: any) => ({
+        id: row.id,
+        regionId: row.region_id,
+        districtId: row.district_id,
+        date: row.date,
+        time: row.time,
+        substationNumber: row.substation_number,
+        substationName: row.substation_name,
+        location: row.location,
+        rating: Number(row.rating),
+        peakLoadStatus: row.peak_load_status,
+        redPhaseBulkLoad: Number(row.red_phase_bulk_load),
+        yellowPhaseBulkLoad: Number(row.yellow_phase_bulk_load),
+        bluePhaseBulkLoad: Number(row.blue_phase_bulk_load),
+        averageCurrent: Number(row.average_current),
+        percentageLoad: Number(row.percentage_load),
+        ratedLoad: Number(row.rated_load),
+        tenPercentFullLoadNeutral: Number(row.ten_percent_full_load_neutral),
+        calculatedNeutral: Number(row.calculated_neutral),
+        feederLegs: (row.feeder_legs || []).map((leg: any) => ({
+          id: leg.id,
+          redPhaseCurrent: Number(leg.red_phase_current),
+          yellowPhaseCurrent: Number(leg.yellow_phase_current),
+          bluePhaseCurrent: Number(leg.blue_phase_current),
+          neutralCurrent: Number(leg.neutral_current),
+        })),
+        createdBy: row.created_by,
+        createdAt: row.created_at
+      })));
+    };
+    fetchLoadMonitoring();
+  }, []);
   
   return (
     <DataContext.Provider value={value}>
